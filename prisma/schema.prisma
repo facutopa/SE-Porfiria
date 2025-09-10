@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   // "MEDICO" | "CIPYP" | "ADMIN"
+  license   String?  // Número de matrícula para médicos
+  hospital  String?  // Hospital o institución
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  patients Patient[]
+  questionnaires Questionnaire[]
+
+  @@map("users")
+}
+
+model Patient {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  dni         String   @unique
+  birthDate   DateTime
+  gender      String
+  phone       String?
+  email       String?
+  address     String?
+  medicalHistory String? // Historia médica relevante
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  doctorId    String
+  doctor      User     @relation(fields: [doctorId], references: [id])
+  questionnaires Questionnaire[]
+
+  @@map("patients")
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  text        String
+  type        String   // "YES_NO" | "MULTIPLE_CHOICE" | "TEXT" | "NUMBER" | "SCALE"
+  options     String?  // JSON string para opciones múltiples
+  isRequired  Boolean  @default(true)
+  order       Int
+  category    String   // Categoría de la pregunta (síntomas, antecedentes, etc.)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  answers     Answer[]
+
+  @@map("questions")
+}
+
+model Questionnaire {
+  id                String   @id @default(cuid())
+  patientId         String
+  doctorId          String
+  testRecommendation String? // "PBG_URINE_TEST" | "NO_TEST_NEEDED" | "FOLLOW_UP_REQUIRED"
+  notes             String?
+  isCompleted       Boolean  @default(false)
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relaciones
+  patient           Patient  @relation(fields: [patientId], references: [id])
+  doctor            User     @relation(fields: [doctorId], references: [id])
+  answers           Answer[]
+
+  @@map("questionnaires")
+}
+
+model Answer {
+  id             String   @id @default(cuid())
+  questionnaireId String
+  questionId     String
+  value          String   // Respuesta del usuario
+  createdAt      DateTime @default(now())
+
+  // Relaciones
+  questionnaire  Questionnaire @relation(fields: [questionnaireId], references: [id])
+  question       Question      @relation(fields: [questionId], references: [id])
+
+  @@unique([questionnaireId, questionId])
+  @@map("answers")
+}
+
+model TestResult {
+  id             String   @id @default(cuid())
+  patientId      String
+  questionnaireId String
+  testType       String   // Tipo de test realizado
+  result         String   // Resultado del test
+  testDate       DateTime
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@map("test_results")
+}
