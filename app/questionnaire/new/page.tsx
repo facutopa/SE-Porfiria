@@ -139,6 +139,8 @@ const questionnaireQuestions = [
   }
 ]
 
+import { DroolsEngine } from '@/lib/drools-engine';
+
 export default function NewQuestionnairePage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -191,7 +193,7 @@ export default function NewQuestionnairePage() {
     }
   }
 
-  const calculateRecommendation = () => {
+  const calculateRecommendationFallback = () => {
     let score = 0
     let criticalSymptoms = 0
 
@@ -252,6 +254,53 @@ export default function NewQuestionnairePage() {
     return recommendation
   }
 
+  const calculateRecommendation = async () => {
+    try {
+      const droolsEngine = new DroolsEngine();
+      
+      // Preparar datos del paciente
+      const patientData = {
+        id: selectedPatient.id,
+        firstName: selectedPatient.name.split(' ')[0],
+        lastName: selectedPatient.name.split(' ').slice(1).join(' '),
+        dni: selectedPatient.dni,
+        age: 35, // Calcular basado en fecha de nacimiento
+        gender: 'F', // Obtener del perfil del paciente
+        familyHistory: answers['9'] === 'YES',
+        medications: [], // Obtener de historial médico
+        alcoholConsumption: answers['11'] === 'YES',
+        fastingStatus: answers['12'] === 'YES'
+      };
+
+      // Preparar respuestas
+      const responses = Object.entries(answers).map(([questionId, answer]) => ({
+        questionId,
+        answer,
+        patientId: selectedPatient.id,
+        timestamp: new Date()
+      }));
+
+      // Evaluar con Drools
+      const result = await droolsEngine.evaluateQuestionnaire(patientData, responses);
+      
+      if (result.success && result.recommendations) {
+        return {
+          test: result.recommendations.testType,
+          confidence: result.recommendations.confidence,
+          message: result.recommendations.message,
+          score: result.recommendations.score,
+          criticalSymptoms: result.recommendations.criticalSymptoms
+        };
+      } else {
+        // Fallback a lógica original si Drools falla
+        return calculateRecommendationFallback();
+      }
+    } catch (error) {
+      console.error('Error en evaluación con Drools:', error);
+      return calculateRecommendationFallback();
+    }
+  };
+
   const handleSubmit = async () => {
     setIsLoading(true)
     
@@ -259,7 +308,7 @@ export default function NewQuestionnairePage() {
       // Simular guardado del cuestionario
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      const recommendation = calculateRecommendation()
+      const recommendation = await calculateRecommendation()
       setRecommendation(recommendation)
       setShowResults(true)
     } catch (error) {

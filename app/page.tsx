@@ -128,7 +128,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <p className="text-gray-400">
-              © 2024 SE-Porfiria. Sistema desarrollado para el Centro de Investigación de Porfiria y Porfirina (CIPYP).
+              © 2025 SE-Porfiria. Sistema desarrollado para el Centro de Investigación de Porfiria y Porfirina (CIPYP).
             </p>
             <p className="text-sm text-gray-500 mt-2">
               Esta herramienta no reemplaza el juicio clínico profesional y no debe ser utilizada como único método de diagnóstico.
