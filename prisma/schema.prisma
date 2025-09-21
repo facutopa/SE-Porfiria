@@ -41,6 +41,17 @@ model Patient {
   email       String?
   address     String?
   medicalHistory String? // Historia médica relevante
+  
+  // Nuevos campos
+  nationality String?  // Nacionalidad
+  city        String?  // Localidad
+  workplace   String?  // Lugar de trabajo
+  healthInsurance String? // Obra Social
+  insuranceNumber String? // Nro de Afiliado
+  previousJobs String? // Trabajos anteriores
+  maritalStatus String? // Estado civil
+  occupation  String?  // Ocupación
+  
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -79,6 +90,15 @@ model Questionnaire {
   notes             String?
   isCompleted       Boolean  @default(false)
   completedAt       DateTime?
+  
+  // Campos para la recomendación completa de Drools
+  recommendationData String? // JSON con toda la información de la recomendación
+  estudiosRecomendados String? // JSON array con los estudios recomendados
+  medicamentosContraproducentes String? // JSON array con medicamentos contraindicados
+  confidence        String? // "low" | "medium" | "high"
+  score             Int?    // Puntuación total del cuestionario
+  tipoPorfiria      String? // "AGUDA" | "CUTANEA" | "NO_APLICA"
+  
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

@@ -22,6 +22,8 @@ const getCategoryStyle = (category: string) => {
       return 'bg-red-100 text-red-800';
     case 'anamnesis':
       return 'bg-green-100 text-green-800';
+    case 'otros_datos_medicos':
+      return 'bg-purple-100 text-purple-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
@@ -314,7 +316,9 @@ export default function EditQuestionnairePage() {
           <div className="mb-6">
             <div className="flex items-center mb-4">
               <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${getCategoryStyle(currentQuestion.category)}`}>
-                {currentQuestion.category.replace('_', ' ').toUpperCase()}
+                {currentQuestion.category === 'otros_datos_medicos' 
+                  ? 'OTROS DATOS MÉDICOS'
+                  : currentQuestion.category.replace('_', ' ').toUpperCase()}
               </span>
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">

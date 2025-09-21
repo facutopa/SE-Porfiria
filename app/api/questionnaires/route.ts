@@ -1,10 +1,40 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
+import { evaluateWithDrools } from '@/lib/drools-client';
 
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
+    // Verificar autenticación
+    const cookieStore = cookies();
+    const token = cookieStore.get('auth_token');
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      );
+    }
+
+    // Obtener el ID del usuario del token
+    const decoded = jwt.verify(token.value, process.env.JWT_SECRET || 'default_secret') as { userId: string };
+
+    // Verificar que el usuario existe
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { role: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      );
+    }
+
     const data = await request.json();
     const { patientId, answers } = data;
 
@@ -31,17 +61,68 @@ export async function POST(request: Request) {
       );
     }
 
+    // Obtener datos del paciente
+    const patient = await prisma.patient.findUnique({
+      where: { id: patientId }
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        { error: 'Paciente no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Evaluar con Drools
+    const patientData = {
+      id: patient.id,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      dni: patient.dni,
+      age: new Date().getFullYear() - new Date(patient.birthDate).getFullYear(),
+      gender: patient.gender as 'M' | 'F',
+      familyHistory: answers['familiares'] === 'SI',
+      medications: [],
+      alcoholConsumption: answers['consumeAlcohol'] === 'SI',
+      fastingStatus: false
+    };
+
+    const responses = Object.entries(answers).map(([questionId, answer]) => ({
+      questionId,
+      answer,
+      patientId: patient.id,
+      timestamp: new Date()
+    }));
+
+    // Evaluar con Drools
+    const droolsResult = await evaluateWithDrools(patientData, responses);
+
+    if (!droolsResult.success) {
+      console.error('Error en evaluación Drools:', droolsResult.error);
+      return NextResponse.json(
+        { error: 'Error al evaluar el cuestionario con el motor de reglas' },
+        { status: 500 }
+      );
+    }
+
     // Crear el cuestionario y sus respuestas en una transacción
     const questionnaire = await prisma.$transaction(async (tx) => {
       // 1. Crear el cuestionario
       const newQuestionnaire = await tx.questionnaire.create({
         data: {
           patientId,
-          doctorId: 'default-doctor-id', // Temporal, deberías obtener esto del usuario autenticado
+          doctorId: decoded.userId, // Usar el ID del usuario autenticado
           isCompleted: true,
           completedAt: new Date(),
-          testRecommendation: data.recommendation?.testType || null,
-          notes: data.recommendation?.message || null
+          testRecommendation: droolsResult.recommendation?.testType || null,
+          notes: droolsResult.recommendation?.message || null,
+          // Guardar toda la información de la recomendación
+          recommendationData: JSON.stringify(droolsResult.recommendation),
+          estudiosRecomendados: JSON.stringify(droolsResult.recommendation?.estudiosRecomendados || []),
+          medicamentosContraproducentes: JSON.stringify(droolsResult.recommendation?.medicamentosContraproducentes || []),
+          confidence: droolsResult.recommendation?.confidence || null,
+          score: droolsResult.recommendation?.score || null,
+          tipoPorfiria: droolsResult.recommendation?.tipoPorfiria || null
         }
       });
 
@@ -64,6 +145,22 @@ export async function POST(request: Request) {
     return NextResponse.json(questionnaire);
   } catch (error) {
     console.error('Error al crear cuestionario:', error);
+    
+    // Manejar errores específicos
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Ya existe un cuestionario para este paciente' },
+        { status: 400 }
+      );
+    }
+    
+    if (error.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Error de referencia: El paciente o doctor no existe.' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Error al crear el cuestionario' },
       { status: 500 }
@@ -73,6 +170,33 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    // Verificar autenticación
+    const cookieStore = cookies();
+    const token = cookieStore.get('auth_token');
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      );
+    }
+
+    // Obtener el ID del usuario del token
+    const decoded = jwt.verify(token.value, process.env.JWT_SECRET || 'default_secret') as { userId: string };
+
+    // Verificar que el usuario existe
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { role: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
 
@@ -89,9 +213,31 @@ export async function GET(request: Request) {
         isCompleted: true
       },
       include: {
-        answers: true
+        answers: true,
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
       }
     });
+
+    if (!questionnaire) {
+      return NextResponse.json(
+        { error: 'Cuestionario no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Verificar permisos: el doctor que creó el cuestionario, un admin, o personal CIPYP puede verlo
+    if (user.role !== 'ADMIN' && user.role !== 'CIPYP' && questionnaire.doctorId !== decoded.userId) {
+      return NextResponse.json(
+        { error: 'No tienes permisos para ver este cuestionario' },
+        { status: 403 }
+      );
+    }
 
     return NextResponse.json({ questionnaire });
   } catch (error) {

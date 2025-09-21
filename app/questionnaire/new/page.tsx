@@ -22,6 +22,8 @@ const getCategoryStyle = (category: string) => {
       return 'bg-red-100 text-red-800';
     case 'anamnesis':
       return 'bg-green-100 text-green-800';
+    case 'otros_datos_medicos':
+      return 'bg-purple-100 text-purple-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
@@ -38,41 +40,6 @@ export default function NewQuestionnairePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  useEffect(() => {
-    const patientIdParam = searchParams.get('patientId')
-    if (patientIdParam) {
-      const loadPatientAndCheckQuestionnaire = async () => {
-        try {
-          // Primero obtener los datos del paciente
-          const patientResponse = await fetch(`/api/patients/${patientIdParam}`);
-          const patientData = await patientResponse.json();
-          
-          if (!patientResponse.ok) {
-            throw new Error('Error al cargar datos del paciente');
-          }
-
-          // Verificar si ya existe un cuestionario
-          const questionnaireResponse = await fetch(`/api/questionnaires/${patientIdParam}`);
-          const questionnaireData = await questionnaireResponse.json();
-          
-          if (questionnaireData.questionnaire) {
-            // Si existe, redirigir a la página de edición
-            router.push(`/questionnaire/edit/${questionnaireData.questionnaire.id}?patientId=${patientIdParam}`);
-          } else {
-            // Si no existe, establecer el paciente seleccionado
-            setPatientId(patientIdParam);
-            setSelectedPatient(patientData.patient);
-          }
-        } catch (error) {
-          console.error('Error:', error);
-          alert('Error al cargar los datos. Por favor, inténtalo de nuevo.');
-          router.push('/patients');
-        }
-      };
-      
-      loadPatientAndCheckQuestionnaire();
-    }
-  }, [searchParams, router])
 
   const currentQuestion = questionnaireQuestions[currentQuestionIndex]
   const isLastQuestion = currentQuestionIndex === questionnaireQuestions.length - 1
@@ -442,7 +409,10 @@ export default function NewQuestionnairePage() {
         const patientData = await patientResponse.json();
 
         // Verificar si ya existe un cuestionario
-        const questionnaireResponse = await fetch(`/api/questionnaires/${patientIdParam}`);
+        const questionnaireResponse = await fetch(`/api/questionnaires?patientId=${patientIdParam}`);
+        if (!questionnaireResponse.ok) {
+          console.warn('Error al verificar cuestionario existente:', questionnaireResponse.status);
+        }
         const questionnaireData = await questionnaireResponse.json();
         
         if (questionnaireData.questionnaire) {
@@ -576,7 +546,9 @@ export default function NewQuestionnairePage() {
           <div className="mb-6">
             <div className="flex items-center mb-4">
               <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${getCategoryStyle(currentQuestion.category)}`}>
-                {currentQuestion.category.replace('_', ' ').toUpperCase()}
+                {currentQuestion.category === 'otros_datos_medicos' 
+                  ? 'OTROS DATOS MÉDICOS'
+                  : currentQuestion.category.replace('_', ' ').toUpperCase()}
               </span>
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">

@@ -15,11 +15,39 @@ export default function NewPatientPage() {
     phone: '',
     email: '',
     address: '',
-    medicalHistory: ''
+    medicalHistory: '',
+    nationality: '',
+    city: '',
+    workplace: '',
+    healthInsurance: '',
+    insuranceNumber: '',
+    previousJobs: '',
+    maritalStatus: '',
+    occupation: ''
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [calculatedAge, setCalculatedAge] = useState<number | null>(null)
   const router = useRouter()
+
+  // Función para calcular la edad
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) {
+      setCalculatedAge(null)
+      return
+    }
+    
+    const today = new Date()
+    const birth = new Date(birthDate)
+    let age = today.getFullYear() - birth.getFullYear()
+    const monthDiff = today.getMonth() - birth.getMonth()
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--
+    }
+    
+    setCalculatedAge(age)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,10 +93,17 @@ export default function NewPatientPage() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({
+    const newFormData = {
       ...formData,
       [e.target.name]: e.target.value
-    })
+    }
+    
+    setFormData(newFormData)
+    
+    // Calcular edad automáticamente cuando cambie la fecha de nacimiento
+    if (e.target.name === 'birthDate') {
+      calculateAge(e.target.value)
+    }
   }
 
   return (
@@ -167,6 +202,11 @@ export default function NewPatientPage() {
                     value={formData.birthDate}
                     onChange={handleChange}
                   />
+                  {calculatedAge !== null && (
+                    <p className="mt-1 text-sm text-gray-600">
+                      Edad: {calculatedAge} años
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -186,6 +226,71 @@ export default function NewPatientPage() {
                     <option value="F">Femenino</option>
                     <option value="O">Otro</option>
                   </select>
+                </div>
+
+                <div>
+                  <label htmlFor="nationality" className="label">
+                    Nacionalidad
+                  </label>
+                  <input
+                    type="text"
+                    name="nationality"
+                    id="nationality"
+                    className="input-field"
+                    placeholder="Argentina"
+                    value={formData.nationality}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="city" className="label">
+                    Localidad
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    id="city"
+                    className="input-field"
+                    placeholder="Buenos Aires"
+                    value={formData.city}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="maritalStatus" className="label">
+                    Estado Civil
+                  </label>
+                  <select
+                    name="maritalStatus"
+                    id="maritalStatus"
+                    className="input-field"
+                    value={formData.maritalStatus}
+                    onChange={handleChange}
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="soltero">Soltero/a</option>
+                    <option value="casado">Casado/a</option>
+                    <option value="divorciado">Divorciado/a</option>
+                    <option value="viudo">Viudo/a</option>
+                    <option value="concubinato">Concubinato</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="occupation" className="label">
+                    Ocupación
+                  </label>
+                  <input
+                    type="text"
+                    name="occupation"
+                    id="occupation"
+                    className="input-field"
+                    placeholder="Ingeniero, Médico, etc."
+                    value={formData.occupation}
+                    onChange={handleChange}
+                  />
                 </div>
               </div>
             </div>
@@ -235,6 +340,72 @@ export default function NewPatientPage() {
                     className="input-field"
                     placeholder="Av. Corrientes 1234, CABA"
                     value={formData.address}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Información Laboral y Obra Social */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Información Laboral y Obra Social</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="workplace" className="label">
+                    Lugar de Trabajo
+                  </label>
+                  <input
+                    type="text"
+                    name="workplace"
+                    id="workplace"
+                    className="input-field"
+                    placeholder="Empresa, Institución, etc."
+                    value={formData.workplace}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="healthInsurance" className="label">
+                    Obra Social
+                  </label>
+                  <input
+                    type="text"
+                    name="healthInsurance"
+                    id="healthInsurance"
+                    className="input-field"
+                    placeholder="OSDE, Swiss Medical, etc."
+                    value={formData.healthInsurance}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="insuranceNumber" className="label">
+                    Nro de Afiliado
+                  </label>
+                  <input
+                    type="text"
+                    name="insuranceNumber"
+                    id="insuranceNumber"
+                    className="input-field"
+                    placeholder="12345678"
+                    value={formData.insuranceNumber}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label htmlFor="previousJobs" className="label">
+                    Trabajos Anteriores
+                  </label>
+                  <textarea
+                    name="previousJobs"
+                    id="previousJobs"
+                    rows={3}
+                    className="input-field"
+                    placeholder="Describa trabajos anteriores relevantes..."
+                    value={formData.previousJobs}
                     onChange={handleChange}
                   />
                 </div>

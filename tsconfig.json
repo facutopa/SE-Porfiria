@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "es6"],
+    "target": "es2018",
+    "lib": ["dom", "dom.iterable", "es2018"],
     "allowJs": true,
-    "types": ["minimatch"],
+    "types": ["minimatch", "node"],
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,

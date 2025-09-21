@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import * as bcrypt from 'bcryptjs'
+import { questionnaireQuestions } from '../lib/constants/questionnaire-questions'
 
 const prisma = new PrismaClient()
 
@@ -15,6 +16,21 @@ async function main() {
       role: 'MEDICO',
       license: '12345',
       hospital: 'Hospital Demo',
+      isActive: true
+    },
+  })
+
+  // Crear usuario CIPYP por defecto
+  const cipypUser = await prisma.user.upsert({
+    where: { email: 'cipyp@example.com' },
+    update: {},
+    create: {
+      email: 'cipyp@example.com',
+      name: 'Personal CIPYP',
+      password: await bcrypt.hash('cipyp123', 10),
+      role: 'CIPYP',
+      license: 'CIPYP001',
+      hospital: 'CIPYP',
       isActive: true
     },
   })
@@ -72,6 +88,31 @@ async function main() {
       where: { dni: patient.dni },
       update: patient,
       create: patient
+    })
+  }
+
+  // Crear preguntas del cuestionario
+  for (let i = 0; i < questionnaireQuestions.length; i++) {
+    const question = questionnaireQuestions[i]
+    await prisma.question.upsert({
+      where: { id: question.id },
+      update: {
+        text: question.text,
+        type: question.type,
+        isRequired: question.required,
+        order: i + 1,
+        category: question.category,
+        isActive: true
+      },
+      create: {
+        id: question.id,
+        text: question.text,
+        type: question.type,
+        isRequired: question.required,
+        order: i + 1,
+        category: question.category,
+        isActive: true
+      }
     })
   }
 

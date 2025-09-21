@@ -257,7 +257,7 @@ export default function PatientsPage() {
                         {lastQuestionnaire ? (
                           <>
                             <Link 
-                              href={`/questionnaire/${lastQuestionnaire.id}`}
+                              href={`/questionnaire/view/${lastQuestionnaire.id}`}
                               className="text-primary-600 hover:text-primary-900"
                               title="Ver cuestionario"
                             >

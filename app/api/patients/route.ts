@@ -123,6 +123,22 @@ export async function POST(request: Request) {
     return NextResponse.json(patient);
   } catch (error) {
     console.error('Error al crear paciente:', error);
+    
+    // Manejar errores específicos de Prisma
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'El DNI ya está registrado en el sistema. Por favor, usa un DNI diferente.' },
+        { status: 400 }
+      );
+    }
+    
+    if (error.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Error de referencia: El doctor no existe.' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Error al crear el paciente' },
       { status: 500 }

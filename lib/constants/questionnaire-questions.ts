@@ -21,7 +21,7 @@ export const SYMPTOM_CATEGORIES = {
   CUTANEOUS: 'sintomas_cutaneos',
   ACUTE: 'sintomas_agudos',
   ANAMNESIS: 'anamnesis',
-  ENVIRONMENTAL: 'factores_ambientales'
+  ENVIRONMENTAL: 'otros_datos_medicos'
 } as const;
 
 // Preguntas mapeadas a reglas Drools
