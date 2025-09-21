@@ -21,10 +21,20 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // Aquí iría la lógica de autenticación
-      // Por ahora simulamos un login exitoso
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al iniciar sesión');
+      }
+
       // Redirigir según el rol del usuario
       router.push('/dashboard')
     } catch (err) {

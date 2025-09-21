@@ -41,14 +41,24 @@ export default function NewPatientPage() {
     }
 
     try {
-      // Aquí iría la lógica para crear el paciente
-      // Por ahora simulamos la creación
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      const response = await fetch('/api/patients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al crear el paciente');
+      }
+
       // Redirigir a la lista de pacientes
       router.push('/patients?created=true')
     } catch (err) {
-      setError('Error al crear el paciente. Por favor, inténtalo de nuevo.')
+      setError(err instanceof Error ? err.message : 'Error al crear el paciente. Por favor, inténtalo de nuevo.')
     } finally {
       setIsLoading(false)
     }

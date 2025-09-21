@@ -11,135 +11,21 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 
-// Simulamos las preguntas del cuestionario basadas en criterios de Porfiria
-const questionnaireQuestions = [
-  {
-    id: '1',
-    category: 'sintomas_generales',
-    text: '¿El paciente presenta dolor abdominal severo?',
-    type: 'YES_NO',
-    required: true,
-    weight: 3
-  },
-  {
-    id: '2',
-    category: 'sintomas_generales',
-    text: '¿El dolor abdominal se localiza principalmente en el cuadrante superior derecho?',
-    type: 'YES_NO',
-    required: false,
-    weight: 2,
-    dependsOn: '1'
-  },
-  {
-    id: '3',
-    category: 'sintomas_neurologicos',
-    text: '¿El paciente presenta debilidad muscular?',
-    type: 'YES_NO',
-    required: true,
-    weight: 2
-  },
-  {
-    id: '4',
-    category: 'sintomas_neurologicos',
-    text: '¿La debilidad muscular afecta principalmente las extremidades superiores?',
-    type: 'YES_NO',
-    required: false,
-    weight: 1,
-    dependsOn: '3'
-  },
-  {
-    id: '5',
-    category: 'sintomas_cutaneos',
-    text: '¿El paciente presenta lesiones cutáneas o fotosensibilidad?',
-    type: 'YES_NO',
-    required: true,
-    weight: 2
-  },
-  {
-    id: '6',
-    category: 'sintomas_cutaneos',
-    text: '¿Las lesiones aparecen principalmente en áreas expuestas al sol?',
-    type: 'YES_NO',
-    required: false,
-    weight: 1,
-    dependsOn: '5'
-  },
-  {
-    id: '7',
-    category: 'sintomas_psiquiatricos',
-    text: '¿El paciente presenta cambios en el comportamiento o estado mental?',
-    type: 'YES_NO',
-    required: true,
-    weight: 2
-  },
-  {
-    id: '8',
-    category: 'sintomas_psiquiatricos',
-    text: '¿Se observan síntomas de ansiedad, confusión o alucinaciones?',
-    type: 'YES_NO',
-    required: false,
-    weight: 1,
-    dependsOn: '7'
-  },
-  {
-    id: '9',
-    category: 'antecedentes',
-    text: '¿El paciente tiene antecedentes familiares de Porfiria?',
-    type: 'YES_NO',
-    required: true,
-    weight: 3
-  },
-  {
-    id: '10',
-    category: 'antecedentes',
-    text: '¿El paciente está tomando algún medicamento que pueda desencadenar Porfiria?',
-    type: 'YES_NO',
-    required: true,
-    weight: 2
-  },
-  {
-    id: '11',
-    category: 'antecedentes',
-    text: '¿El paciente consume alcohol regularmente?',
-    type: 'YES_NO',
-    required: true,
-    weight: 1
-  },
-  {
-    id: '12',
-    category: 'antecedentes',
-    text: '¿El paciente está en ayuno prolongado o dieta restrictiva?',
-    type: 'YES_NO',
-    required: true,
-    weight: 1
-  },
-  {
-    id: '13',
-    category: 'sintomas_generales',
-    text: '¿El paciente presenta náuseas y vómitos?',
-    type: 'YES_NO',
-    required: true,
-    weight: 1
-  },
-  {
-    id: '14',
-    category: 'sintomas_generales',
-    text: '¿El paciente presenta estreñimiento?',
-    type: 'YES_NO',
-    required: true,
-    weight: 1
-  },
-  {
-    id: '15',
-    category: 'sintomas_neurologicos',
-    text: '¿El paciente presenta convulsiones?',
-    type: 'YES_NO',
-    required: true,
-    weight: 2
-  }
-]
+import { questionnaireQuestions } from '@/lib/constants/questionnaire-questions';
+import { droolsClient, evaluateWithDrools, type DroolsRecommendation } from '@/lib/drools-client';
 
-import { DroolsEngine } from '@/lib/drools-engine';
+const getCategoryStyle = (category: string) => {
+  switch (category) {
+    case 'sintomas_cutaneos':
+      return 'bg-blue-100 text-blue-800';
+    case 'sintomas_agudos':
+      return 'bg-red-100 text-red-800';
+    case 'anamnesis':
+      return 'bg-green-100 text-green-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
 
 export default function NewQuestionnairePage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -152,23 +38,41 @@ export default function NewQuestionnairePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Simulamos lista de pacientes
-  const mockPatients = [
-    { id: '1', name: 'María González', dni: '12345678' },
-    { id: '2', name: 'Carlos Rodríguez', dni: '87654321' },
-    { id: '3', name: 'Ana Martínez', dni: '11223344' }
-  ]
-
   useEffect(() => {
     const patientIdParam = searchParams.get('patientId')
     if (patientIdParam) {
-      setPatientId(patientIdParam)
-      const patient = mockPatients.find(p => p.id === patientIdParam)
-      if (patient) {
-        setSelectedPatient(patient)
-      }
+      const loadPatientAndCheckQuestionnaire = async () => {
+        try {
+          // Primero obtener los datos del paciente
+          const patientResponse = await fetch(`/api/patients/${patientIdParam}`);
+          const patientData = await patientResponse.json();
+          
+          if (!patientResponse.ok) {
+            throw new Error('Error al cargar datos del paciente');
+          }
+
+          // Verificar si ya existe un cuestionario
+          const questionnaireResponse = await fetch(`/api/questionnaires/${patientIdParam}`);
+          const questionnaireData = await questionnaireResponse.json();
+          
+          if (questionnaireData.questionnaire) {
+            // Si existe, redirigir a la página de edición
+            router.push(`/questionnaire/edit/${questionnaireData.questionnaire.id}?patientId=${patientIdParam}`);
+          } else {
+            // Si no existe, establecer el paciente seleccionado
+            setPatientId(patientIdParam);
+            setSelectedPatient(patientData.patient);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Error al cargar los datos. Por favor, inténtalo de nuevo.');
+          router.push('/patients');
+        }
+      };
+      
+      loadPatientAndCheckQuestionnaire();
     }
-  }, [searchParams])
+  }, [searchParams, router])
 
   const currentQuestion = questionnaireQuestions[currentQuestionIndex]
   const isLastQuestion = currentQuestionIndex === questionnaireQuestions.length - 1
@@ -193,7 +97,7 @@ export default function NewQuestionnairePage() {
     }
   }
 
-  const calculateRecommendationFallback = () => {
+  const calculateRecommendationFallback = (): DroolsRecommendation => {
     let score = 0
     let criticalSymptoms = 0
 
@@ -201,53 +105,91 @@ export default function NewQuestionnairePage() {
     questionnaireQuestions.forEach(question => {
       const answer = answers[question.id]
       if (answer === 'YES') {
-        score += question.weight
+        score += question.weight || 0
         
         // Síntomas críticos
-        if (question.category === 'sintomas_generales' && question.id === '1') {
+        if (question.category === 'sintomas_cutaneos' && score >= 22) {
           criticalSymptoms++
         }
-        if (question.category === 'sintomas_neurologicos' && question.id === '3') {
-          criticalSymptoms++
+        if (question.category === 'sintomas_agudos' && score >= 36) {
+          criticalSymptoms += 2
         }
-        if (question.category === 'antecedentes' && question.id === '9') {
+        if (question.category === 'anamnesis' && score >= 12) {
           criticalSymptoms++
         }
       }
     })
 
     // Determinar recomendación
-    let recommendation = {
-      test: 'NO_TEST_NEEDED',
+    let recommendation: DroolsRecommendation = {
+      testType: 'NO_TEST_NEEDED',
       confidence: 'low',
       message: '',
       score: score,
-      criticalSymptoms: criticalSymptoms
+      criticalSymptoms: criticalSymptoms,
+      reasoning: [] as string[],
+      riskFactors: [] as string[],
+      estudiosRecomendados: [] as string[], 
+      contraindicatedMedications: [] as string[]
     }
 
-    if (score >= 8 || criticalSymptoms >= 2) {
+    if (score >= 36 || criticalSymptoms >= 2) {
       recommendation = {
-        test: 'PBG_URINE_TEST',
+        testType: 'PBG_URINE_TEST',
         confidence: 'high',
-        message: 'Se recomienda realizar test de PBG en orina para descartar Porfiria Aguda.',
+        message: 'Se recomienda realizar estudios urgentes para Porfiria Aguda.',
         score: score,
-        criticalSymptoms: criticalSymptoms
+        criticalSymptoms: criticalSymptoms,
+        reasoning: ['Puntuación alta o síntomas críticos detectados'],
+        riskFactors: [],
+        estudiosRecomendados: [
+          'PBG (Porfobilinógeno)',
+          'IPP (Isómeros de Porfirinas)',
+          'ALA (Ácido Aminolevulínico)',
+          'PTO (Porfirinas Totales en Orina)'
+        ],
+        medicamentosContraproducentes: [
+          'Barbitúricos',
+          'Sulfonamidas',
+          'Estrógenos',
+          'Progestágenos',
+          'Anticonvulsivantes'
+        ]
       }
-    } else if (score >= 5) {
+    } else if (score >= 22) {
       recommendation = {
-        test: 'FOLLOW_UP_REQUIRED',
-        confidence: 'medium',
-        message: 'Se recomienda seguimiento clínico y considerar test de PBG si los síntomas persisten.',
+        testType: 'PBG_URINE_TEST',
+        confidence: 'high',
+        message: 'Se recomienda realizar estudios para Porfiria Cutánea.',
         score: score,
-        criticalSymptoms: criticalSymptoms
+        criticalSymptoms: criticalSymptoms,
+        reasoning: ['Síntomas cutáneos significativos'],
+        riskFactors: [],
+        estudiosRecomendados: [
+          'IPP (Isómeros de Porfirinas)',
+          'PTO (Porfirinas Totales en Orina)',
+          'CRO (Coproporfirinas)',
+          'PBG (Porfobilinógeno)'
+        ],
+        medicamentosContraproducentes: [
+          'Tetraciclinas',
+          'Nalidíxico',
+          'Furosemida',
+          'Sulfonilureas',
+          'Estrógenos'
+        ]
       }
     } else {
       recommendation = {
-        test: 'NO_TEST_NEEDED',
+        testType: 'NO_TEST_NEEDED',
         confidence: 'low',
         message: 'Los síntomas no sugieren Porfiria. Continuar con evaluación clínica general.',
         score: score,
-        criticalSymptoms: criticalSymptoms
+        criticalSymptoms: criticalSymptoms,
+        reasoning: ['Puntuación baja sin síntomas críticos'],
+        riskFactors: [],
+        estudiosRecomendados: [],
+        medicamentosContraproducentes: []
       }
     }
 
@@ -256,23 +198,19 @@ export default function NewQuestionnairePage() {
 
   const calculateRecommendation = async () => {
     try {
-      const droolsEngine = new DroolsEngine();
-      
-      // Preparar datos del paciente
       const patientData = {
         id: selectedPatient.id,
         firstName: selectedPatient.name.split(' ')[0],
         lastName: selectedPatient.name.split(' ').slice(1).join(' '),
         dni: selectedPatient.dni,
-        age: 35, // Calcular basado en fecha de nacimiento
-        gender: 'F', // Obtener del perfil del paciente
-        familyHistory: answers['9'] === 'YES',
-        medications: [], // Obtener de historial médico
-        alcoholConsumption: answers['11'] === 'YES',
-        fastingStatus: answers['12'] === 'YES'
+        age: 35,
+        gender: 'F' as const,
+        familyHistory: answers['familiares'] === 'SI',
+        medications: [],
+        alcoholConsumption: answers['consumeAlcohol'] === 'SI',
+        fastingStatus: answers['ayunoProlongado'] === 'SI'
       };
 
-      // Preparar respuestas
       const responses = Object.entries(answers).map(([questionId, answer]) => ({
         questionId,
         answer,
@@ -280,19 +218,25 @@ export default function NewQuestionnairePage() {
         timestamp: new Date()
       }));
 
-      // Evaluar con Drools
-      const result = await droolsEngine.evaluateQuestionnaire(patientData, responses);
+      const result = await evaluateWithDrools(
+        patientData, 
+        responses, 
+        calculateRecommendationFallback
+      );
       
-      if (result.success && result.recommendations) {
+      if (result.success && result.recommendation) {
         return {
-          test: result.recommendations.testType,
-          confidence: result.recommendations.confidence,
-          message: result.recommendations.message,
-          score: result.recommendations.score,
-          criticalSymptoms: result.recommendations.criticalSymptoms
+          testType: result.recommendation.testType,
+          confidence: result.recommendation.confidence,
+          message: result.recommendation.message,
+          score: result.recommendation.score,
+          criticalSymptoms: result.recommendation.criticalSymptoms,
+          reasoning: result.recommendation.reasoning,
+          riskFactors: result.recommendation.riskFactors,
+          recommendedTests: result.recommendation.recommendedTests,
+          contraindicatedMedications: result.recommendation.contraindicatedMedications
         };
       } else {
-        // Fallback a lógica original si Drools falla
         return calculateRecommendationFallback();
       }
     } catch (error) {
@@ -305,21 +249,42 @@ export default function NewQuestionnairePage() {
     setIsLoading(true)
     
     try {
-      // Simular guardado del cuestionario
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Primero calcular la recomendación
+      const recommendation = await calculateRecommendation();
       
-      const recommendation = await calculateRecommendation()
-      setRecommendation(recommendation)
-      setShowResults(true)
+      // Luego guardar el cuestionario con la recomendación
+      const questionnaireData = {
+        patientId: selectedPatient.id,
+        answers,
+        recommendation,
+        timestamp: new Date()
+      };
+
+      const saveResponse = await fetch('/api/questionnaires', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(questionnaireData)
+      });
+
+      if (!saveResponse.ok) {
+        const error = await saveResponse.json();
+        throw new Error(error.error || 'Error al guardar el cuestionario');
+      }
+
+      setRecommendation(recommendation);
+      setShowResults(true);
     } catch (error) {
-      console.error('Error al guardar cuestionario:', error)
+      console.error('Error al guardar cuestionario:', error);
+      alert(error instanceof Error ? error.message : 'Error al guardar el cuestionario');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
-  const getRecommendationIcon = (test: string) => {
-    switch (test) {
+  const getRecommendationIcon = (recommendation: DroolsRecommendation) => {
+    switch (recommendation.testType) {
       case 'PBG_URINE_TEST':
         return <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
       case 'FOLLOW_UP_REQUIRED':
@@ -329,8 +294,8 @@ export default function NewQuestionnairePage() {
     }
   }
 
-  const getRecommendationColor = (test: string) => {
-    switch (test) {
+  const getRecommendationColor = (recommendation: DroolsRecommendation) => {
+    switch (recommendation.testType) {
       case 'PBG_URINE_TEST':
         return 'border-red-200 bg-red-50'
       case 'FOLLOW_UP_REQUIRED':
@@ -368,15 +333,15 @@ export default function NewQuestionnairePage() {
               </p>
             </div>
 
-            <div className={`border-2 rounded-lg p-6 ${getRecommendationColor(recommendation.test)}`}>
+            <div className={`border-2 rounded-lg p-6 ${getRecommendationColor(recommendation)}`}>
               <div className="flex items-center justify-center mb-4">
-                {getRecommendationIcon(recommendation.test)}
+                {getRecommendationIcon(recommendation)}
               </div>
               
               <h3 className="text-xl font-semibold text-gray-900 text-center mb-4">
-                {recommendation.test === 'PBG_URINE_TEST' && 'Test de PBG Recomendado'}
-                {recommendation.test === 'FOLLOW_UP_REQUIRED' && 'Seguimiento Requerido'}
-                {recommendation.test === 'NO_TEST_NEEDED' && 'Sin Indicación de Test'}
+                {recommendation.testType === 'PBG_URINE_TEST' && 'Test de PBG Recomendado'}
+                {recommendation.testType === 'FOLLOW_UP_REQUIRED' && 'Seguimiento Requerido'}
+                {recommendation.testType === 'NO_TEST_NEEDED' && 'Sin Indicación de Test'}
               </h3>
 
               <p className="text-gray-700 text-center mb-6">
@@ -394,7 +359,29 @@ export default function NewQuestionnairePage() {
                 </div>
               </div>
 
-              <div className="text-center">
+              {recommendation.estudiosRecomendados && recommendation.estudiosRecomendados.length > 0 && (
+                <div className="mt-6 bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Estudios Recomendados:</h4>
+                  <ul className="list-disc pl-5 text-gray-700">
+                    {recommendation.estudiosRecomendados.map((estudio: string, index: number) => (
+                      <li key={index}>{estudio}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {recommendation.medicamentosContraproducentes && recommendation.medicamentosContraproducentes.length > 0 && (
+                <div className="mt-4 bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Medicamentos Contraindicados:</h4>
+                  <ul className="list-disc pl-5 text-gray-700">
+                    {recommendation.medicamentosContraproducentes.map((medicamento: string, index: number) => (
+                      <li key={index}>{medicamento}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="text-center mt-6">
                 <p className="text-sm text-gray-600 mb-4">
                   <strong>Importante:</strong> Esta recomendación es solo orientativa y no reemplaza el juicio clínico profesional.
                 </p>
@@ -405,8 +392,11 @@ export default function NewQuestionnairePage() {
               <Link href="/patients" className="btn-secondary">
                 Ver Pacientes
               </Link>
-              <Link href="/questionnaire/new" className="btn-primary">
-                Nuevo Cuestionario
+              <Link 
+                href={`/questionnaire/edit/${selectedPatient.id}`} 
+                className="btn-primary"
+              >
+                Editar Respuestas
               </Link>
             </div>
           </div>
@@ -415,49 +405,134 @@ export default function NewQuestionnairePage() {
     )
   }
 
-  if (!selectedPatient) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div className="flex items-center">
-                <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Nuevo Cuestionario</h1>
-                  <p className="text-sm text-gray-600">Selecciona un paciente</p>
-                </div>
-              </div>
-              <Link href="/patients" className="btn-secondary">
-                <ArrowLeftIcon className="h-5 w-5 mr-2" />
-                Volver
-              </Link>
-            </div>
-          </div>
-        </header>
+  // Estado para la lista de pacientes
+  const [patients, setPatients] = useState<any[]>([])
+  const [loadingPatients, setLoadingPatients] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
-        <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Seleccionar Paciente</h2>
-            <div className="space-y-3">
-              {mockPatients.map((patient) => (
-                <button
-                  key={patient.id}
-                  onClick={() => {
-                    setSelectedPatient(patient)
-                    setPatientId(patient.id)
-                  }}
-                  className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="font-medium text-gray-900">{patient.name}</div>
-                  <div className="text-sm text-gray-600">DNI: {patient.dni}</div>
-                </button>
-              ))}
+  useEffect(() => {
+    const patientIdParam = searchParams.get('patientId');
+    
+    const loadPatients = async () => {
+      if (!patientIdParam) {
+        setLoadingPatients(true);
+        setLoadError('');
+        try {
+          const response = await fetch('/api/patients');
+          if (!response.ok) {
+            throw new Error('Error al cargar la lista de pacientes');
+          }
+          const data = await response.json();
+          setPatients(data.patients);
+        } catch (error) {
+          console.error('Error:', error);
+          setLoadError('Error al cargar la lista de pacientes');
+        } finally {
+          setLoadingPatients(false);
+        }
+        return;
+      }
+
+      try {
+        // Primero obtener los datos del paciente
+        const patientResponse = await fetch(`/api/patients/${patientIdParam}`);
+        if (!patientResponse.ok) {
+          throw new Error('Error al cargar datos del paciente');
+        }
+        const patientData = await patientResponse.json();
+
+        // Verificar si ya existe un cuestionario
+        const questionnaireResponse = await fetch(`/api/questionnaires/${patientIdParam}`);
+        const questionnaireData = await questionnaireResponse.json();
+        
+        if (questionnaireData.questionnaire) {
+          // Si existe, redirigir a la página de edición
+          router.push(`/questionnaire/edit/${questionnaireData.questionnaire.id}?patientId=${patientIdParam}`);
+        } else {
+          // Si no existe, establecer el paciente seleccionado
+          setPatientId(patientIdParam);
+          setSelectedPatient(patientData.patient);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setLoadError('Error al cargar los datos del paciente');
+        setTimeout(() => router.push('/patients'), 2000);
+      }
+    };
+    
+    loadPatients();
+  }, [searchParams, router]);
+
+  if (!selectedPatient) {
+    // Si no hay patientId en la URL, mostrar la selección de paciente
+    if (!searchParams.get('patientId')) {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <header className="bg-white shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center py-4">
+                <div className="flex items-center">
+                  <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">Nuevo Cuestionario</h1>
+                    <p className="text-sm text-gray-600">Selecciona un paciente</p>
+                  </div>
+                </div>
+                <Link href="/patients" className="btn-secondary">
+                  <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                  Volver
+                </Link>
+              </div>
             </div>
-          </div>
-        </main>
-      </div>
-    )
+          </header>
+
+          <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="card">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Seleccionar Paciente</h2>
+              <div className="space-y-3">
+                {loadError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-4">
+                    {loadError}
+                  </div>
+                )}
+
+                {loadingPatients ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Cargando pacientes...</p>
+                  </div>
+                ) : patients.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No hay pacientes registrados.</p>
+                    <Link href="/patients/new" className="btn-primary mt-4">
+                      Registrar nuevo paciente
+                    </Link>
+                  </div>
+                ) : patients.map((patient) => (
+                  <button
+                    key={patient.id}
+                    onClick={() => {
+                      setSelectedPatient(patient)
+                      setPatientId(patient.id)
+                    }}
+                    className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">{patient.firstName} {patient.lastName}</div>
+                    <div className="text-sm text-gray-600">DNI: {patient.dni}</div>
+                    <div className="text-xs text-gray-500">
+                      {patient.updatedAt ? `Última visita: ${new Date(patient.updatedAt).toLocaleDateString()}` : 'Sin visitas previas'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+    
+    // Si hay patientId pero aún no se cargó el paciente, mostrar loading
+    return <div>Cargando...</div>;
   }
 
   return (
@@ -470,7 +545,7 @@ export default function NewQuestionnairePage() {
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Cuestionario de Evaluación</h1>
                 <p className="text-sm text-gray-600">
-                  {selectedPatient.name} (DNI: {selectedPatient.dni})
+                  {selectedPatient.firstName} {selectedPatient.lastName} (DNI: {selectedPatient.dni})
                 </p>
               </div>
             </div>
@@ -500,7 +575,7 @@ export default function NewQuestionnairePage() {
         <div className="card">
           <div className="mb-6">
             <div className="flex items-center mb-4">
-              <span className="bg-primary-100 text-primary-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${getCategoryStyle(currentQuestion.category)}`}>
                 {currentQuestion.category.replace('_', ' ').toUpperCase()}
               </span>
             </div>
@@ -517,8 +592,8 @@ export default function NewQuestionnairePage() {
               <input
                 type="radio"
                 name={`question_${currentQuestion.id}`}
-                value="YES"
-                checked={answers[currentQuestion.id] === 'YES'}
+                value="SI"
+                checked={answers[currentQuestion.id] === 'SI'}
                 onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
               />

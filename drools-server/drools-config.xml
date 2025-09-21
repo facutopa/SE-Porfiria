@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kmodule xmlns="http://jboss.org/kie/6.0.0/kmodule">
+    <kbase name="PorfiriaRules" packages="com.porfiria.rules">
+        <ksession name="porfiriaSession" type="stateless" default="true">
+            <listeners>
+                <listener type="agenda" class="com.porfiria.listeners.PorfiriaAgendaListener"/>
+                <listener type="rule" class="com.porfiria.listeners.PorfiriaRuleListener"/>
+            </listeners>
+        </ksession>
+    </kbase>
+</kmodule>

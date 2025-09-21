@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   HeartIcon, 
@@ -12,46 +13,67 @@ import {
   Cog6ToothIcon
 } from '@heroicons/react/24/outline'
 
-// Simulamos datos del usuario
-const mockUser = {
-  name: 'Dr. Juan Pérez',
-  role: 'MEDICO',
-  hospital: 'Hospital General',
-  license: '12345'
-}
-
-// Simulamos estadísticas
-const mockStats = {
-  totalPatients: 24,
-  questionnairesCompleted: 18,
-  testsRecommended: 12,
-  pendingFollowUps: 3
-}
-
 export default function DashboardPage() {
-  const [recentPatients, setRecentPatients] = useState([
-    {
-      id: '1',
-      name: 'María González',
-      dni: '12345678',
-      lastVisit: '2024-01-15',
-      status: 'completed'
-    },
-    {
-      id: '2',
-      name: 'Carlos Rodríguez',
-      dni: '87654321',
-      lastVisit: '2024-01-14',
-      status: 'pending'
-    },
-    {
-      id: '3',
-      name: 'Ana Martínez',
-      dni: '11223344',
-      lastVisit: '2024-01-13',
-      status: 'completed'
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [stats, setStats] = useState({
+    totalPatients: 0,
+    questionnairesCompleted: 0,
+    testsRecommended: 0,
+    pendingFollowUps: 0
+  })
+  const [recentPatients, setRecentPatients] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        // Cargar datos del usuario desde la sesión
+        const userResponse = await fetch('/api/auth/session')
+        if (userResponse.ok) {
+          const userData = await userResponse.json()
+          setUser(userData)
+        }
+
+        // Cargar estadísticas
+        const statsResponse = await fetch('/api/stats')
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json()
+          setStats(statsData)
+        }
+
+        // Cargar pacientes recientes
+        const patientsResponse = await fetch('/api/patients?limit=3')
+        if (patientsResponse.ok) {
+          const { patients } = await patientsResponse.json()
+          setRecentPatients(patients.map((p: any) => ({
+            id: p.id,
+            name: `${p.firstName} ${p.lastName}`,
+            dni: p.dni,
+            lastVisit: new Date(p.updatedAt).toLocaleDateString(),
+            status: p.questionnaires?.length > 0 ? 'completed' : 'pending'
+          })))
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  ])
+
+    loadDashboardData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -63,7 +85,7 @@ export default function DashboardPage() {
               <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">SE-Porfiria</h1>
-                <p className="text-sm text-gray-600">Bienvenido, {mockUser.name}</p>
+                <p className="text-sm text-gray-600">Bienvenido{user?.name ? `, ${user.name}` : ''}</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -73,7 +95,28 @@ export default function DashboardPage() {
               <button className="p-2 text-gray-400 hover:text-gray-600">
                 <Cog6ToothIcon className="h-6 w-6" />
               </button>
-              <button className="btn-secondary">
+              <button 
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/auth/logout', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json'
+                      }
+                    });
+
+                    if (!response.ok) {
+                      throw new Error('Error al cerrar sesión');
+                    }
+
+                    router.push('/auth/login');
+                  } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al cerrar sesión');
+                  }
+                }}
+                className="btn-secondary"
+              >
                 Cerrar Sesión
               </button>
             </div>
@@ -89,7 +132,7 @@ export default function DashboardPage() {
               <UserGroupIcon className="h-8 w-8 text-primary-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Pacientes</p>
-                <p className="text-2xl font-bold text-gray-900">{mockStats.totalPatients}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalPatients}</p>
               </div>
             </div>
           </div>
@@ -99,7 +142,7 @@ export default function DashboardPage() {
               <DocumentTextIcon className="h-8 w-8 text-medical-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Cuestionarios</p>
-                <p className="text-2xl font-bold text-gray-900">{mockStats.questionnairesCompleted}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.questionnairesCompleted}</p>
               </div>
             </div>
           </div>
@@ -109,7 +152,7 @@ export default function DashboardPage() {
               <ChartBarIcon className="h-8 w-8 text-yellow-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Tests Recomendados</p>
-                <p className="text-2xl font-bold text-gray-900">{mockStats.testsRecommended}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.testsRecommended}</p>
               </div>
             </div>
           </div>
@@ -119,7 +162,7 @@ export default function DashboardPage() {
               <BellIcon className="h-8 w-8 text-red-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Seguimientos</p>
-                <p className="text-2xl font-bold text-gray-900">{mockStats.pendingFollowUps}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.pendingFollowUps}</p>
               </div>
             </div>
           </div>
@@ -198,47 +241,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Actividad Reciente</h2>
-          <div className="space-y-4">
-            <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-              <div className="flex-shrink-0">
-                <DocumentTextIcon className="h-6 w-6 text-medical-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">Cuestionario completado</span> para María González
-                </p>
-                <p className="text-xs text-gray-500">Hace 2 horas</p>
-              </div>
-            </div>
-
-            <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-              <div className="flex-shrink-0">
-                <PlusIcon className="h-6 w-6 text-primary-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">Nuevo paciente registrado</span>: Carlos Rodríguez
-                </p>
-                <p className="text-xs text-gray-500">Ayer</p>
-              </div>
-            </div>
-
-            <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-              <div className="flex-shrink-0">
-                <ChartBarIcon className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">Test de PBG recomendado</span> para Ana Martínez
-                </p>
-                <p className="text-xs text-gray-500">Hace 3 días</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   )
