@@ -4,11 +4,12 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 
 ## 🎯 Características Principales
 
+- **Motor de Reglas Drools**: Sistema experto basado en reglas médicas
 - **PWA (Progressive Web App)**: Aplicación web responsive que funciona offline
 - **Sistema de Cuestionario Inteligente**: Evaluación dinámica basada en síntomas y antecedentes
 - **Gestión de Pacientes**: Registro completo de pacientes y historiales médicos
 - **Dashboard CIPYP**: Panel de control para análisis y seguimiento de casos
-- **Recomendaciones de Tests**: Sistema experto que sugiere tests de PBG en orina
+- **Recomendaciones de Tests**: Sistema experto que sugiere tests específicos según el tipo de Porfiria
 - **Autenticación Segura**: Sistema de login para médicos y personal CIPYP
 
 ## 🏗️ Tecnologías Utilizadas
@@ -16,6 +17,7 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 - **Frontend**: Next.js 14, React 18, TypeScript
 - **Styling**: Tailwind CSS
 - **Base de Datos**: Prisma ORM con SQLite
+- **Motor de Reglas**: Drools con servidor Express
 - **PWA**: Service Workers, Web App Manifest
 - **Autenticación**: JWT (JSON Web Tokens)
 - **Validación**: Zod, React Hook Form
@@ -25,7 +27,7 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 ### Para Médicos
 - Registro y gestión de pacientes
 - Cuestionario especializado de evaluación de Porfiria
-- Recomendaciones automáticas de tests basadas en evidencia
+- Recomendaciones automáticas basadas en reglas Drools
 - Historial completo de consultas y evaluaciones
 - Dashboard personal con estadísticas
 
@@ -45,120 +47,101 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 ### Pasos de Instalación
 
 1. **Clonar el repositorio**
-```bash
+\`\`\`bash
 git clone <repository-url>
 cd SE-Porfiria
-```
+\`\`\`
 
 2. **Instalar dependencias**
-```bash
+\`\`\`bash
 npm install
-```
+cd drools-server && npm install
+cd ..
+\`\`\`
 
 3. **Configurar base de datos**
-```bash
+\`\`\`bash
+# Generar el cliente de Prisma
 npx prisma generate
-npx prisma db push
-```
 
-4. **Ejecutar en modo desarrollo**
-```bash
-npm run dev
-```
+# Aplicar migraciones y cargar datos iniciales
+npx prisma migrate reset --force
+\`\`\`
 
-5. **Abrir en el navegador**
-```
-http://localhost:3000
-```
+4. **Iniciar los servidores**
+\`\`\`bash
+# Iniciar ambos servidores (Next.js y Drools)
+npm run dev:full
+
+# O iniciarlos por separado:
+npm run dev          # Servidor Next.js
+npm run drools:dev   # Servidor Drools
+\`\`\`
+
+5. **Acceder a la aplicación**
+\`\`\`
+Frontend: http://localhost:3000
+Servidor Drools: http://localhost:3001
+\`\`\`
+
+6. **Credenciales por defecto**
+\`\`\`
+Email: doctor@example.com
+Contraseña: demo123
+\`\`\`
 
 ## 📊 Estructura del Proyecto
 
-```
+\`\`\`
 SE-Porfiria/
 ├── app/                    # App Router de Next.js
+│   ├── api/               # API Routes
 │   ├── auth/              # Páginas de autenticación
 │   ├── dashboard/         # Dashboard principal
 │   ├── patients/          # Gestión de pacientes
 │   ├── questionnaire/     # Sistema de cuestionarios
 │   ├── cipyp/            # Dashboard CIPYP
 │   └── globals.css       # Estilos globales
-├── components/            # Componentes reutilizables
+├── drools-server/         # Servidor de reglas Drools
+│   ├── rules/            # Archivos .drl
+│   └── server.js         # Servidor Express
 ├── lib/                  # Utilidades y configuración
 ├── prisma/               # Esquema de base de datos
-├── public/               # Archivos estáticos
-│   ├── manifest.json     # PWA manifest
-│   ├── sw.js            # Service Worker
-│   └── icons/           # Iconos PWA
-└── types/               # Definiciones TypeScript
-```
+└── public/               # Archivos estáticos
+\`\`\`
 
 ## 🗄️ Esquema de Base de Datos
 
 ### Entidades Principales
 - **User**: Médicos y personal CIPYP
 - **Patient**: Pacientes registrados
-- **Question**: Preguntas del cuestionario
 - **Questionnaire**: Evaluaciones completadas
 - **Answer**: Respuestas individuales
 - **TestResult**: Resultados de tests realizados
 
-## 🔐 Sistema de Autenticación
-
-- Registro diferenciado para médicos y personal CIPYP
-- Validación de matrícula médica
-- JWT para sesiones seguras
-- Roles y permisos diferenciados
-
-## 📋 Sistema de Cuestionario
+## 📋 Sistema de Cuestionario y Reglas
 
 ### Categorías de Preguntas
-- **Síntomas Generales**: Dolor abdominal, náuseas, vómitos
-- **Síntomas Neurológicos**: Debilidad muscular, convulsiones
-- **Síntomas Cutáneos**: Fotosensibilidad, lesiones
-- **Síntomas Psiquiátricos**: Cambios de comportamiento
-- **Antecedentes**: Familiares, medicamentos, alcohol
+- **Síntomas Cutáneos**: Fotosensibilidad, lesiones, ampollas
+- **Síntomas Agudos**: Dolor abdominal, trastornos neurológicos
+- **Anamnesis**: Antecedentes familiares, medicamentos, alcohol
 
-### Algoritmo de Recomendación
-- Sistema de puntuación ponderada
-- Identificación de síntomas críticos
-- Recomendaciones basadas en evidencia:
-  - **Test PBG**: Alta probabilidad de Porfiria
-  - **Seguimiento**: Probabilidad moderada
-  - **Sin Test**: Baja probabilidad
+### Sistema de Puntuación
+- **Porfiria Cutánea**: ≥ 22 puntos en síntomas cutáneos
+- **Porfiria Aguda**: ≥ 36 puntos en síntomas agudos
+- **Anamnesis Significativa**: ≥ 12 puntos
 
-## 📱 PWA Features
+### Recomendaciones
+- **Tests para Porfiria Cutánea**: IPP, PTO, CRO, PBG
+- **Tests para Porfiria Aguda**: PBG, IPP, ALA, PTO
+- **Medicamentos Contraindicados**: Lista específica según tipo
 
-- **Instalable**: Se puede instalar como app nativa
-- **Offline**: Funciona sin conexión a internet
-- **Responsive**: Optimizado para móviles y tablets
-- **Fast Loading**: Carga rápida con service workers
-- **Push Notifications**: Notificaciones (futuro)
+## 🔐 Sistema de Autenticación
 
-## 🎨 Diseño Responsive
-
-- **Mobile First**: Diseño optimizado para móviles
-- **Tablet Support**: Interfaz adaptada para tablets
-- **Desktop**: Experiencia completa en escritorio
-- **Touch Friendly**: Botones y elementos táctiles
-
-## 🔧 Scripts Disponibles
-
-```bash
-npm run dev          # Desarrollo
-npm run build        # Construcción para producción
-npm run start        # Servidor de producción
-npm run lint         # Linter
-npm run type-check   # Verificación de tipos
-```
-
-## 📈 Próximas Funcionalidades
-
-- [ ] Notificaciones push
-- [ ] Exportación de reportes PDF
-- [ ] Integración con laboratorios
-- [ ] Chat entre médicos y CIPYP
-- [ ] Análisis de tendencias
-- [ ] API REST para integraciones
+- JWT para manejo de sesiones
+- Roles diferenciados (MEDICO, CIPYP, ADMIN)
+- Acceso restringido por rol
+- Protección de rutas API
 
 ## 🏥 Uso Médico
 
