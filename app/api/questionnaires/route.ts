@@ -73,6 +73,10 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log('🧠 [DEBUG] Iniciando evaluación con Drools en API...');
+    console.log('👤 [DEBUG] Paciente desde BD:', patient);
+    console.log('📋 [DEBUG] Respuestas recibidas:', answers);
+    
     // Evaluar con Drools
     const patientData = {
       id: patient.id,
@@ -87,6 +91,8 @@ export async function POST(request: Request) {
       fastingStatus: false
     };
 
+    console.log('👤 [DEBUG] Datos del paciente preparados:', patientData);
+
     const responses = Object.entries(answers).map(([questionId, answer]) => ({
       questionId,
       answer,
@@ -94,16 +100,24 @@ export async function POST(request: Request) {
       timestamp: new Date()
     }));
 
+    console.log('📝 [DEBUG] Respuestas formateadas:', responses);
+    console.log('🔗 [DEBUG] Llamando a evaluateWithDrools...');
+
     // Evaluar con Drools
     const droolsResult = await evaluateWithDrools(patientData, responses);
+    
+    console.log('🎯 [DEBUG] Resultado de Drools en API:', droolsResult);
 
     if (!droolsResult.success) {
-      console.error('Error en evaluación Drools:', droolsResult.error);
+      console.error('❌ [DEBUG] Error en evaluación Drools:', droolsResult.error);
       return NextResponse.json(
         { error: 'Error al evaluar el cuestionario con el motor de reglas' },
         { status: 500 }
       );
     }
+
+    console.log('✅ [DEBUG] Evaluación Drools exitosa, guardando en BD...');
+    console.log('💾 [DEBUG] Recomendación a guardar:', droolsResult.recommendation);
 
     // Crear el cuestionario y sus respuestas en una transacción
     const questionnaire = await prisma.$transaction(async (tx) => {
@@ -122,6 +136,7 @@ export async function POST(request: Request) {
           medicamentosContraproducentes: JSON.stringify(droolsResult.recommendation?.medicamentosContraproducentes || []),
           confidence: droolsResult.recommendation?.confidence || null,
           score: droolsResult.recommendation?.score || null,
+          criticalSymptoms: droolsResult.recommendation?.criticalSymptoms || null,
           tipoPorfiria: droolsResult.recommendation?.tipoPorfiria || null
         }
       });
@@ -142,6 +157,7 @@ export async function POST(request: Request) {
       return newQuestionnaire;
     });
 
+    console.log('✅ [DEBUG] Cuestionario guardado exitosamente:', questionnaire);
     return NextResponse.json(questionnaire);
   } catch (error) {
     console.error('Error al crear cuestionario:', error);

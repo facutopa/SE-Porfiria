@@ -97,6 +97,7 @@ model Questionnaire {
   medicamentosContraproducentes String? // JSON array con medicamentos contraindicados
   confidence        String? // "low" | "medium" | "high"
   score             Int?    // Puntuación total del cuestionario
+  criticalSymptoms  Int?    // Número de síntomas críticos
   tipoPorfiria      String? // "AGUDA" | "CUTANEA" | "NO_APLICA"
   
   createdAt         DateTime @default(now())

@@ -43,6 +43,7 @@ export interface DroolsEvaluationResult {
   success: boolean;
   recommendation?: DroolsRecommendation;
   error?: string;
+  raw?: any;
 }
 
 /**
@@ -51,7 +52,7 @@ export interface DroolsEvaluationResult {
 export class DroolsClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:3001') {
+  constructor(baseUrl: string = 'http://localhost:8080') {
     this.baseUrl = baseUrl;
   }
 
@@ -63,41 +64,76 @@ export class DroolsClient {
     responses: QuestionnaireResponse[]
   ): Promise<DroolsEvaluationResult> {
     try {
-      console.log('Enviando evaluación a servidor Drools...');
-      
-      const response = await fetch(`${this.baseUrl}/api/evaluate`, {
+      console.log('🔗 [DEBUG] Enviando evaluación a KIE server...');
+      console.log('🌐 [DEBUG] URL del servidor:', `${this.baseUrl}/api/porfiria/evaluar`);
+      console.log('👤 [DEBUG] Datos del paciente:', patientData);
+      console.log('📝 [DEBUG] Respuestas originales:', responses);
+
+      // Ajustar cuerpo según OpenAPI EvaluacionRequest
+      const requestBody = {
+        patientId: patientData.id,
+        firstName: patientData.firstName,
+        lastName: patientData.lastName,
+        dni: patientData.dni,
+        age: patientData.age,
+        gender: patientData.gender,
+        familyHistory: patientData.familyHistory,
+        alcoholConsumption: patientData.alcoholConsumption,
+        fastingStatus: patientData.fastingStatus,
+        responses: responses.map(r => ({
+          questionId: r.questionId,
+          answer: r.answer,
+          patientId: r.patientId
+        }))
+      };
+
+      console.log('📦 [DEBUG] Cuerpo de la petición:', requestBody);
+
+      const response = await fetch(`${this.baseUrl}/api/porfiria/evaluar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          patient: patientData,
-          responses: responses.reduce((acc, resp) => {
-            acc[resp.questionId] = resp.answer;
-            return acc;
-          }, {} as Record<string, string>)
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('📡 [DEBUG] Respuesta HTTP:', response.status, response.statusText);
+
       if (!response.ok) {
+        console.error('❌ [DEBUG] Error HTTP:', response.status, response.statusText);
         throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
       }
 
-      const result = await response.json();
-      
-      if (result.success) {
-        return {
-          success: true,
-          recommendation: result.recommendation
-        };
-      } else {
-        return {
-          success: false,
-          error: result.error || 'Error desconocido del servidor'
-        };
-      }
+      const kieResult = await response.json();
+      console.log('🎯 [DEBUG] Resultado KIE:', kieResult);
+
+      // Mapear respuesta KIE a nuestra recomendación interna mínimamente disruptiva
+      const diagnostico = kieResult?.diagnostico;
+      const ordenes = kieResult?.ordenes;
+      const medicamentos = kieResult?.medicamentos;
+      const cuadroClinico = kieResult?.cuadroClinico;
+
+      const recommendation: DroolsRecommendation = {
+        testType: ordenes?.estudios ? 'PBG_URINE_TEST' : 'NO_TEST_NEEDED',
+        confidence: 'medium',
+        message: diagnostico
+          ? `Diagnóstico temprano: cutánea=${diagnostico.sintomaCutanea ? 'SI' : 'NO'}, aguda=${diagnostico.sintomaAguda ? 'SI' : 'NO'}`
+          : 'Resultado disponible',
+        score: typeof cuadroClinico?.anamnesis === 'number' ? Number(cuadroClinico.anamnesis) : null,
+        criticalSymptoms: typeof cuadroClinico?.sintomasAguda === 'number' ? Number(cuadroClinico.sintomasAguda) : null,
+        reasoning: [],
+        riskFactors: [],
+        estudiosRecomendados: ordenes?.estudios ? ['PBG'] : [],
+        medicamentosContraproducentes: medicamentos?.medicamentos ? ['Revisar medicación'] : []
+      } as unknown as DroolsRecommendation;
+
+      return {
+        success: true,
+        recommendation,
+        raw: kieResult
+      };
     } catch (error) {
-      console.error('Error en comunicación con Drools:', error);
+      console.error('💥 [DEBUG] Error en comunicación con Drools:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error de conexión'
@@ -130,18 +166,24 @@ export class DroolsClient {
   /**
    * Verifica la salud del servidor Drools
    */
-  async checkHealth(): Promise<{ status: string; service: string; timestamp: string }> {
+  async checkHealth(): Promise<{ ok: boolean; message: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`);
+      const response = await fetch(`${this.baseUrl}/api/porfiria/health`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-store'
+        }
+      });
       
       if (!response.ok) {
         throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
       }
 
-      return await response.json();
+      const text = await response.text();
+      return { ok: true, message: text };
     } catch (error) {
       console.error('Error verificando salud del servidor:', error);
-      throw error;
+      return { ok: false, message: error instanceof Error ? error.message : 'Error' };
     }
   }
 
@@ -154,17 +196,25 @@ export class DroolsClient {
     fallbackLogic: () => DroolsRecommendation
   ): Promise<DroolsEvaluationResult> {
     try {
-      // Intentar conectar con Drools
-      await this.checkHealth();
+      console.log('🔗 [DEBUG] Intentando conectar con servidor Drools...');
       
-      // Si la conexión es exitosa, usar Drools
-      return await this.evaluateQuestionnaire(patientData, responses);
+      // Intentar evaluar directamente con Drools
+      const result = await this.evaluateQuestionnaire(patientData, responses);
+      
+      if (result.success) {
+        console.log('✅ [DEBUG] Servidor Drools respondió exitosamente');
+        return result;
+      } else {
+        console.log('⚠️ [DEBUG] Servidor Drools falló, usando lógica de fallback');
+        throw new Error(result.error || 'Error del servidor Drools');
+      }
     } catch (error) {
-      console.warn('Servidor Drools no disponible, usando lógica de fallback:', error);
+      console.warn('❌ [DEBUG] Servidor Drools no disponible, usando lógica de fallback:', error);
       
       // Usar lógica de fallback
       try {
         const recommendation = fallbackLogic();
+        console.log('🔄 [DEBUG] Usando lógica de fallback local');
         return {
           success: true,
           recommendation

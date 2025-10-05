@@ -13,7 +13,7 @@ import {
   PencilIcon
 } from '@heroicons/react/24/outline'
 
-import { questionnaireQuestions } from '@/lib/constants/questionnaire-questions';
+import { questionnaireQuestions, SYMPTOM_CATEGORIES } from '@/lib/constants/questionnaire-questions';
 
 const getCategoryStyle = (category: string) => {
   switch (category) {
@@ -101,6 +101,25 @@ export default function ViewQuestionnairePage() {
       default:
         return 'border-green-200 bg-green-50'
     }
+  }
+
+  // Función para calcular puntajes por categoría basado en respuestas reales
+  const calculateCategoryScores = () => {
+    let cutaneousScore = 0
+    let acuteScore = 0
+
+    questionnaireQuestions.forEach(question => {
+      const answer = answers[question.id]
+      if (answer === 'SI') {
+        if (question.category === SYMPTOM_CATEGORIES.CUTANEOUS) {
+          cutaneousScore += question.weight || 0
+        } else if (question.category === SYMPTOM_CATEGORIES.ACUTE) {
+          acuteScore += question.weight || 0
+        }
+      }
+    })
+
+    return { cutaneousScore, acuteScore }
   }
 
   if (isLoading) {
@@ -193,7 +212,11 @@ export default function ViewQuestionnairePage() {
               </div>
               
               <h3 className="text-xl font-semibold text-gray-900 text-center mb-4">
-                {questionnaire.testRecommendation === 'PBG_URINE_TEST' && 'Test de PBG Recomendado'}
+                {questionnaire.testRecommendation === 'PBG_URINE_TEST' && (
+                  questionnaire.tipoPorfiria && questionnaire.tipoPorfiria !== 'NO_APLICA' 
+                    ? `Sospecha de Porfiria ${questionnaire.tipoPorfiria === 'CUTANEA' ? 'Cutánea' : questionnaire.tipoPorfiria === 'AGUDA' ? 'Aguda' : ''}`
+                    : 'Sospecha de Porfiria'
+                )}
                 {questionnaire.testRecommendation === 'FOLLOW_UP_REQUIRED' && 'Seguimiento Requerido'}
                 {questionnaire.testRecommendation === 'NO_TEST_NEEDED' && 'Sin Indicación de Test'}
               </h3>
@@ -204,8 +227,45 @@ export default function ViewQuestionnairePage() {
                 </p>
               )}
               
-              {/* Mostrar estudios recomendados */}
-              {questionnaire.estudiosRecomendados && (
+              {/* Mostrar puntaje calculado dinámicamente */}
+              {(() => {
+                const { cutaneousScore, acuteScore } = calculateCategoryScores()
+                const totalScore = cutaneousScore + acuteScore
+                
+                return (
+                  <div className="mt-6 bg-white p-4 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-900">Puntuación Total:</span>
+                        <span className="ml-2 text-gray-700 font-semibold">{totalScore} puntos</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-900">Síntomas Cutáneos:</span>
+                        <span className="ml-2 text-gray-700 font-semibold">{cutaneousScore} puntos</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-900">Síntomas Agudos:</span>
+                        <span className="ml-2 text-gray-700 font-semibold">{acuteScore} puntos</span>
+                      </div>
+                    </div>
+                    {questionnaire.criticalSymptoms && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <span className="font-medium text-gray-900">Síntomas Críticos:</span>
+                        <span className="ml-2 text-gray-700 font-semibold">{questionnaire.criticalSymptoms}</span>
+                      </div>
+                    )}
+                    {questionnaire.tipoPorfiria && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <span className="font-medium text-gray-900">Tipo de Porfiria:</span>
+                        <span className="ml-2 text-gray-700 font-semibold">{questionnaire.tipoPorfiria}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* Mostrar estudios recomendados solo si hay indicación de test */}
+              {questionnaire.testRecommendation !== 'NO_TEST_NEEDED' && questionnaire.estudiosRecomendados && (
                 <div className="mt-6 bg-white p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">Estudios Recomendados:</h4>
                   <ul className="list-disc pl-5 text-gray-700">
@@ -216,41 +276,6 @@ export default function ViewQuestionnairePage() {
                 </div>
               )}
               
-              {/* Mostrar medicamentos contraindicados */}
-              {questionnaire.medicamentosContraproducentes && (
-                <div className="mt-4 bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Medicamentos Contraindicados:</h4>
-                  <ul className="list-disc pl-5 text-gray-700">
-                    {JSON.parse(questionnaire.medicamentosContraproducentes).map((medicamento: string, index: number) => (
-                      <li key={index}>{medicamento}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {/* Mostrar información adicional si está disponible */}
-              {questionnaire.confidence && (
-                <div className="mt-4 bg-white p-4 rounded-lg">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-900">Confianza:</span>
-                      <span className="ml-2 text-gray-700 capitalize">{questionnaire.confidence}</span>
-                    </div>
-                    {questionnaire.score && (
-                      <div>
-                        <span className="font-medium text-gray-900">Puntuación:</span>
-                        <span className="ml-2 text-gray-700">{questionnaire.score} puntos</span>
-                      </div>
-                    )}
-                    {questionnaire.tipoPorfiria && (
-                      <div className="col-span-2">
-                        <span className="font-medium text-gray-900">Tipo de Porfiria:</span>
-                        <span className="ml-2 text-gray-700">{questionnaire.tipoPorfiria}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}

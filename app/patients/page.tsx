@@ -33,7 +33,6 @@ interface Patient {
 
 export default function PatientsPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +52,7 @@ export default function PatientsPage() {
           birthDate: new Date(patient.birthDate).toLocaleDateString(),
           lastVisit: patient.updatedAt ? new Date(patient.updatedAt).toLocaleDateString() : 'Sin visitas',
           status: patient.isActive ? 'Activo' : 'Inactivo',
-          questionnaires: (patient.questionnaires || []).map(q => ({
+          questionnaires: (patient.questionnaires || []).map((q: any) => ({
             ...q,
             completedAt: q.completedAt ? new Date(q.completedAt).toLocaleDateString() : null,
             recommendation: {
@@ -131,9 +130,8 @@ export default function PatientsPage() {
 
   const filteredPatients = patients
     .filter(patient => 
-      (patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       patient.dni.includes(searchTerm)) &&
-      (statusFilter === 'all' || patient.status.toLowerCase() === statusFilter)
+      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.dni.includes(searchTerm)
     )
 
   return (
@@ -145,7 +143,6 @@ export default function PatientsPage() {
               <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Gestión de Pacientes</h1>
-                <p className="text-sm text-gray-600">Administra tus pacientes y sus historiales</p>
               </div>
             </div>
             <div className="flex space-x-4">
@@ -161,8 +158,8 @@ export default function PatientsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div className="relative flex-1 max-w-lg">
+        <div className="mb-6">
+          <div className="relative max-w-lg">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
@@ -172,15 +169,6 @@ export default function PatientsPage() {
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="ml-4 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="all">Todos los estados</option>
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-          </select>
         </div>
 
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -198,9 +186,6 @@ export default function PatientsPage() {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Diagnóstico
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
@@ -242,15 +227,6 @@ export default function PatientsPage() {
                       ) : (
                         <span className="text-sm text-gray-500">Sin diagnóstico</span>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-sm rounded-full ${
-                        patient.status === 'Activo' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {patient.status}
-                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">

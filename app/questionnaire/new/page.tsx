@@ -37,13 +37,95 @@ export default function NewQuestionnairePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [recommendation, setRecommendation] = useState<any>(null)
+  // Estado para la lista de pacientes
+  const [patients, setPatients] = useState<any[]>([])
+  const [loadingPatients, setLoadingPatients] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const router = useRouter()
   const searchParams = useSearchParams()
-
 
   const currentQuestion = questionnaireQuestions[currentQuestionIndex]
   const isLastQuestion = currentQuestionIndex === questionnaireQuestions.length - 1
   const isFirstQuestion = currentQuestionIndex === 0
+
+  useEffect(() => {
+    const patientIdParam = searchParams.get('patientId');
+    
+    const loadPatients = async () => {
+      if (!patientIdParam) {
+        setLoadingPatients(true);
+        setLoadError('');
+        try {
+          const response = await fetch('/api/patients');
+          if (!response.ok) {
+            throw new Error('Error al cargar la lista de pacientes');
+          }
+          const data = await response.json();
+          
+          // Filtrar solo pacientes que no tienen cuestionario completo
+          const patientsWithoutQuestionnaire = [];
+          for (const patient of data.patients) {
+            try {
+              const questionnaireResponse = await fetch(`/api/questionnaires?patientId=${patient.id}`);
+              if (questionnaireResponse.ok) {
+                const questionnaireData = await questionnaireResponse.json();
+                // Solo incluir si NO tiene cuestionario
+                if (!questionnaireData.questionnaire) {
+                  patientsWithoutQuestionnaire.push(patient);
+                }
+              } else {
+                // Si hay error al verificar, incluir el paciente (por seguridad)
+                patientsWithoutQuestionnaire.push(patient);
+              }
+            } catch (error) {
+              console.warn(`Error verificando cuestionario para paciente ${patient.id}:`, error);
+              // En caso de error, incluir el paciente
+              patientsWithoutQuestionnaire.push(patient);
+            }
+          }
+          
+          setPatients(patientsWithoutQuestionnaire);
+        } catch (error) {
+          console.error('Error:', error);
+          setLoadError('Error al cargar la lista de pacientes');
+        } finally {
+          setLoadingPatients(false);
+        }
+        return;
+      }
+
+      try {
+        // Primero obtener los datos del paciente
+        const patientResponse = await fetch(`/api/patients/${patientIdParam}`);
+        if (!patientResponse.ok) {
+          throw new Error('Error al cargar datos del paciente');
+        }
+        const patientData = await patientResponse.json();
+
+        // Verificar si ya existe un cuestionario
+        const questionnaireResponse = await fetch(`/api/questionnaires?patientId=${patientIdParam}`);
+        if (!questionnaireResponse.ok) {
+          console.warn('Error al verificar cuestionario existente:', questionnaireResponse.status);
+        }
+        const questionnaireData = await questionnaireResponse.json();
+        
+        if (questionnaireData.questionnaire) {
+          // Si existe, redirigir a la página de edición
+          router.push(`/questionnaire/edit/${questionnaireData.questionnaire.id}?patientId=${patientIdParam}`);
+        } else {
+          // Si no existe, establecer el paciente seleccionado
+          setPatientId(patientIdParam);
+          setSelectedPatient(patientData.patient);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setLoadError('Error al cargar los datos del paciente');
+        setTimeout(() => router.push('/patients'), 2000);
+      }
+    };
+    
+    loadPatients();
+  }, [searchParams, router]);
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers(prev => ({
@@ -68,24 +150,48 @@ export default function NewQuestionnairePage() {
     let score = 0
     let criticalSymptoms = 0
 
+    // Contadores por categoría para síntomas críticos
+    let cutaneousScore = 0
+    let acuteScore = 0
+    let anamnesisScore = 0
+
     // Calcular puntuación basada en respuestas
     questionnaireQuestions.forEach(question => {
       const answer = answers[question.id]
-      if (answer === 'YES') {
+      if (answer === 'SI') { // Cambiado de 'YES' a 'SI'
         score += question.weight || 0
         
-        // Síntomas críticos
-        if (question.category === 'sintomas_cutaneos' && score >= 22) {
-          criticalSymptoms++
-        }
-        if (question.category === 'sintomas_agudos' && score >= 36) {
-          criticalSymptoms += 2
-        }
-        if (question.category === 'anamnesis' && score >= 12) {
-          criticalSymptoms++
+        // Acumular por categoría para síntomas críticos
+        if (question.category === 'sintomas_cutaneos') {
+          cutaneousScore += question.weight || 0
+        } else if (question.category === 'sintomas_agudos') {
+          acuteScore += question.weight || 0
+        } else if (question.category === 'anamnesis') {
+          anamnesisScore += question.weight || 0
         }
       }
     })
+
+    // Calcular síntomas críticos basado en puntuación por categoría
+    if (cutaneousScore >= 22) { // Umbral para síntomas cutáneos
+      criticalSymptoms++
+    }
+    if (acuteScore >= 36) { // Umbral para síntomas agudos
+      criticalSymptoms += 2
+    }
+    if (anamnesisScore >= 12) { // Umbral para factores ambientales
+      criticalSymptoms++
+    }
+
+    // Debug logs
+    console.log('Cálculo de puntuación:', {
+      totalScore: score,
+      cutaneousScore,
+      acuteScore,
+      anamnesisScore,
+      criticalSymptoms,
+      answers: Object.entries(answers).filter(([_, answer]) => answer === 'SI')
+    });
 
     // Determinar recomendación
     let recommendation: DroolsRecommendation = {
@@ -164,6 +270,10 @@ export default function NewQuestionnairePage() {
   }
 
   const calculateRecommendation = async () => {
+    console.log('🧠 [DEBUG] Iniciando cálculo de recomendación...');
+    console.log('👤 [DEBUG] Paciente seleccionado:', selectedPatient);
+    console.log('📋 [DEBUG] Respuestas del cuestionario:', answers);
+    
     try {
       const patientData = {
         id: selectedPatient.id,
@@ -178,6 +288,8 @@ export default function NewQuestionnairePage() {
         fastingStatus: answers['ayunoProlongado'] === 'SI'
       };
 
+      console.log('👤 [DEBUG] Datos del paciente preparados:', patientData);
+
       const responses = Object.entries(answers).map(([questionId, answer]) => ({
         questionId,
         answer,
@@ -185,13 +297,19 @@ export default function NewQuestionnairePage() {
         timestamp: new Date()
       }));
 
+      console.log('📝 [DEBUG] Respuestas formateadas para Drools:', responses);
+      console.log('🔗 [DEBUG] Llamando a evaluateWithDrools...');
+
       const result = await evaluateWithDrools(
         patientData, 
         responses, 
         calculateRecommendationFallback
       );
       
+      console.log('🎯 [DEBUG] Resultado de Drools:', result);
+      
       if (result.success && result.recommendation) {
+        console.log('✅ [DEBUG] Recomendación exitosa de Drools:', result.recommendation);
         return {
           testType: result.recommendation.testType,
           confidence: result.recommendation.confidence,
@@ -204,21 +322,30 @@ export default function NewQuestionnairePage() {
           contraindicatedMedications: result.recommendation.contraindicatedMedications
         };
       } else {
+        console.log('⚠️ [DEBUG] Drools falló, usando lógica de fallback');
         return calculateRecommendationFallback();
       }
     } catch (error) {
-      console.error('Error en evaluación con Drools:', error);
+      console.error('❌ [DEBUG] Error en evaluación con Drools:', error);
+      console.log('🔄 [DEBUG] Usando lógica de fallback debido al error');
       return calculateRecommendationFallback();
     }
   };
 
   const handleSubmit = async () => {
+    console.log('🚀 [DEBUG] Iniciando envío del cuestionario...');
+    console.log('📋 [DEBUG] Respuestas del usuario:', answers);
+    console.log('👤 [DEBUG] Paciente seleccionado:', selectedPatient);
+    
     setIsLoading(true)
     
     try {
+      console.log('🧠 [DEBUG] Paso 1: Calculando recomendación...');
       // Primero calcular la recomendación
       const recommendation = await calculateRecommendation();
+      console.log('✅ [DEBUG] Recomendación calculada:', recommendation);
       
+      console.log('💾 [DEBUG] Paso 2: Preparando datos para guardar...');
       // Luego guardar el cuestionario con la recomendación
       const questionnaireData = {
         patientId: selectedPatient.id,
@@ -226,6 +353,9 @@ export default function NewQuestionnairePage() {
         recommendation,
         timestamp: new Date()
       };
+
+      console.log('📦 [DEBUG] Datos del cuestionario a guardar:', questionnaireData);
+      console.log('🔗 [DEBUG] Paso 3: Enviando a /api/questionnaires...');
 
       const saveResponse = await fetch('/api/questionnaires', {
         method: 'POST',
@@ -235,17 +365,26 @@ export default function NewQuestionnairePage() {
         body: JSON.stringify(questionnaireData)
       });
 
+      console.log('📡 [DEBUG] Respuesta del servidor:', saveResponse.status, saveResponse.statusText);
+
       if (!saveResponse.ok) {
         const error = await saveResponse.json();
+        console.error('❌ [DEBUG] Error del servidor:', error);
         throw new Error(error.error || 'Error al guardar el cuestionario');
       }
 
+      console.log('✅ [DEBUG] Cuestionario guardado exitosamente');
+      console.log('🎯 [DEBUG] Paso 4: Mostrando resultados...');
+      
       setRecommendation(recommendation);
       setShowResults(true);
+      
+      console.log('🎉 [DEBUG] Proceso completado exitosamente');
     } catch (error) {
-      console.error('Error al guardar cuestionario:', error);
+      console.error('❌ [DEBUG] Error al guardar cuestionario:', error);
       alert(error instanceof Error ? error.message : 'Error al guardar el cuestionario');
     } finally {
+      console.log('🏁 [DEBUG] Finalizando proceso...');
       setIsLoading(false);
     }
   }
@@ -372,67 +511,6 @@ export default function NewQuestionnairePage() {
     )
   }
 
-  // Estado para la lista de pacientes
-  const [patients, setPatients] = useState<any[]>([])
-  const [loadingPatients, setLoadingPatients] = useState(false)
-  const [loadError, setLoadError] = useState('')
-
-  useEffect(() => {
-    const patientIdParam = searchParams.get('patientId');
-    
-    const loadPatients = async () => {
-      if (!patientIdParam) {
-        setLoadingPatients(true);
-        setLoadError('');
-        try {
-          const response = await fetch('/api/patients');
-          if (!response.ok) {
-            throw new Error('Error al cargar la lista de pacientes');
-          }
-          const data = await response.json();
-          setPatients(data.patients);
-        } catch (error) {
-          console.error('Error:', error);
-          setLoadError('Error al cargar la lista de pacientes');
-        } finally {
-          setLoadingPatients(false);
-        }
-        return;
-      }
-
-      try {
-        // Primero obtener los datos del paciente
-        const patientResponse = await fetch(`/api/patients/${patientIdParam}`);
-        if (!patientResponse.ok) {
-          throw new Error('Error al cargar datos del paciente');
-        }
-        const patientData = await patientResponse.json();
-
-        // Verificar si ya existe un cuestionario
-        const questionnaireResponse = await fetch(`/api/questionnaires?patientId=${patientIdParam}`);
-        if (!questionnaireResponse.ok) {
-          console.warn('Error al verificar cuestionario existente:', questionnaireResponse.status);
-        }
-        const questionnaireData = await questionnaireResponse.json();
-        
-        if (questionnaireData.questionnaire) {
-          // Si existe, redirigir a la página de edición
-          router.push(`/questionnaire/edit/${questionnaireData.questionnaire.id}?patientId=${patientIdParam}`);
-        } else {
-          // Si no existe, establecer el paciente seleccionado
-          setPatientId(patientIdParam);
-          setSelectedPatient(patientData.patient);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        setLoadError('Error al cargar los datos del paciente');
-        setTimeout(() => router.push('/patients'), 2000);
-      }
-    };
-    
-    loadPatients();
-  }, [searchParams, router]);
-
   if (!selectedPatient) {
     // Si no hay patientId en la URL, mostrar la selección de paciente
     if (!searchParams.get('patientId')) {
@@ -445,7 +523,6 @@ export default function NewQuestionnairePage() {
                   <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
                   <div>
                     <h1 className="text-xl font-bold text-gray-900">Nuevo Cuestionario</h1>
-                    <p className="text-sm text-gray-600">Selecciona un paciente</p>
                   </div>
                 </div>
                 <Link href="/patients" className="btn-secondary">
@@ -473,9 +550,10 @@ export default function NewQuestionnairePage() {
                   </div>
                 ) : patients.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-600">No hay pacientes registrados.</p>
-                    <Link href="/patients/new" className="btn-primary mt-4">
-                      Registrar nuevo paciente
+                    <p className="text-gray-600 mb-2">No hay pacientes disponibles para completar cuestionario.</p>
+                    <p className="text-sm text-gray-500 mb-6">Todos los pacientes ya tienen un cuestionario completo.</p>
+                    <Link href="/patients" className="btn-primary">
+                      Ver todos los pacientes
                     </Link>
                   </div>
                 ) : patients.map((patient) => (

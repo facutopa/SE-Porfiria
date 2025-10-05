@@ -8,9 +8,8 @@ import {
   UserGroupIcon, 
   DocumentTextIcon, 
   ChartBarIcon,
-  PlusIcon,
-  BellIcon,
-  Cog6ToothIcon
+  UserPlusIcon,
+  BeakerIcon
 } from '@heroicons/react/24/outline'
 
 export default function DashboardPage() {
@@ -18,12 +17,11 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState({
     totalPatients: 0,
-    questionnairesCompleted: 0,
-    testsRecommended: 0,
-    pendingFollowUps: 0
+    questionnairesCompleted: 0
   })
   const [recentPatients, setRecentPatients] = useState([])
   const [loading, setLoading] = useState(true)
+  const [kieStatus, setKieStatus] = useState<{ ok: boolean, message: string } | null>(null)
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -64,6 +62,31 @@ export default function DashboardPage() {
     loadDashboardData()
   }, [])
 
+  useEffect(() => {
+    let isMounted = true
+    let intervalId: any
+
+    const checkHealth = async () => {
+      try {
+        const res = await fetch('/api/kie/health')
+        const ok = res.ok
+        const message = await res.text()
+        if (isMounted) setKieStatus({ ok, message })
+      } catch (e: any) {
+        if (isMounted) setKieStatus({ ok: false, message: e?.message || 'Error' })
+      }
+    }
+
+    // primer chequeo inmediato y luego cada 30s
+    checkHealth()
+    intervalId = setInterval(checkHealth, 30000)
+
+    return () => {
+      isMounted = false
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -89,12 +112,12 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-400 hover:text-gray-600">
-                <BellIcon className="h-6 w-6" />
-              </button>
-              <button className="p-2 text-gray-400 hover:text-gray-600">
-                <Cog6ToothIcon className="h-6 w-6" />
-              </button>
+              <div className="flex items-center">
+                <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${kieStatus?.ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <span className={`mr-1 h-2 w-2 rounded-full ${kieStatus?.ok ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  {kieStatus ? (kieStatus.ok ? 'KIE server OK' : 'KIE server OFF') : 'KIE server...' }
+                </span>
+              </div>
               <button 
                 onClick={async () => {
                   try {
@@ -126,12 +149,12 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 mb-8">
           <div className="card">
             <div className="flex items-center">
               <UserGroupIcon className="h-8 w-8 text-primary-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Pacientes</p>
+                <p className="text-sm font-medium text-gray-600">Pacientes</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalPatients}</p>
               </div>
             </div>
@@ -146,26 +169,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-
-          <div className="card">
-            <div className="flex items-center">
-              <ChartBarIcon className="h-8 w-8 text-yellow-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Tests Recomendados</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.testsRecommended}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center">
-              <BellIcon className="h-8 w-8 text-red-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Seguimientos</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pendingFollowUps}</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Quick Actions */}
@@ -177,34 +180,43 @@ export default function DashboardPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Link href="/patients/new" className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <PlusIcon className="h-8 w-8 text-primary-600 mr-4" />
+                  <UserPlusIcon className="h-8 w-8 text-primary-600 mr-4" />
                   <div>
                     <h3 className="font-medium text-gray-900">Nuevo Paciente</h3>
-                    <p className="text-sm text-gray-600">Registrar un nuevo paciente</p>
                   </div>
                 </Link>
 
-                <Link href="/questionnaire/new" className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <DocumentTextIcon className="h-8 w-8 text-medical-600 mr-4" />
-                  <div>
-                    <h3 className="font-medium text-gray-900">Nuevo Cuestionario</h3>
-                    <p className="text-sm text-gray-600">Iniciar evaluación</p>
+                {kieStatus?.ok ? (
+                  <Link href="/questionnaire/new" className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <DocumentTextIcon className="h-8 w-8 text-medical-600 mr-4" />
+                    <div>
+                      <h3 className="font-medium text-gray-900">Nuevo Cuestionario</h3>
+                    </div>
+                  </Link>
+                ) : (
+                  <div
+                    aria-disabled
+                    className="flex items-center p-4 border border-gray-200 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed opacity-70"
+                    title="KIE server no disponible. Intenta nuevamente cuando el servicio esté activo."
+                  >
+                    <DocumentTextIcon className="h-8 w-8 text-gray-400 mr-4" />
+                    <div>
+                      <h3 className="font-medium">Nuevo Cuestionario</h3>
+                    </div>
                   </div>
-                </Link>
+                )}
 
                 <Link href="/patients" className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                   <UserGroupIcon className="h-8 w-8 text-blue-600 mr-4" />
                   <div>
                     <h3 className="font-medium text-gray-900">Ver Pacientes</h3>
-                    <p className="text-sm text-gray-600">Gestionar pacientes</p>
                   </div>
                 </Link>
 
-                <Link href="/reports" className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <ChartBarIcon className="h-8 w-8 text-yellow-600 mr-4" />
+                <Link href="/medicamentos" className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <BeakerIcon className="h-8 w-8 text-yellow-600 mr-4" />
                   <div>
-                    <h3 className="font-medium text-gray-900">Reportes</h3>
-                    <p className="text-sm text-gray-600">Ver estadísticas</p>
+                    <h3 className="font-medium text-gray-900">Medicamentos</h3>
                   </div>
                 </Link>
               </div>

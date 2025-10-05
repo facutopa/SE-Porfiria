@@ -414,7 +414,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'contactoVeneno',
     category: SYMPTOM_CATEGORIES.ENVIRONMENTAL,
-    text: '¿Ha tenido contacto con venenos?',
+    text: '¿Ha tenido o tiene contacto con Herbicidas Funguicidas, Plaguicidas, Raticidas o algún otro tipo de veneno?',
     type: 'YES_NO',
     required: true,
     weight: 1,
@@ -423,7 +423,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'contactoDerivadoPetroleo',
     category: SYMPTOM_CATEGORIES.ENVIRONMENTAL,
-    text: '¿Ha tenido contacto con derivados del petróleo?',
+    text: '¿Ha tenido o tiene contacto con Pinturas, Solventes, Naftas o algún derivado de petróleo?',
     type: 'YES_NO',
     required: true,
     weight: 1,
@@ -450,7 +450,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'barbituricos',
     category: SYMPTOM_CATEGORIES.ENVIRONMENTAL,
-    text: '¿Consume barbitúricos?',
+    text: '¿Utiliza frecuentemente Barbitúricos/Hipnóticos?',
     type: 'YES_NO',
     required: true,
     weight: 5,
@@ -459,7 +459,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'medicamentosHormonas',
     category: SYMPTOM_CATEGORIES.ENVIRONMENTAL,
-    text: '¿Toma medicamentos hormonales?',
+    text: '¿Ha tomado o toma medicamentos con Hormonas?',
     type: 'YES_NO',
     required: true,
     weight: 5,
@@ -468,7 +468,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'anomaliasPeriodosMenstruales',
     category: SYMPTOM_CATEGORIES.ENVIRONMENTAL,
-    text: '¿Presenta anomalías en los períodos menstruales?',
+    text: '¿Ha tenido o tiene anomalías en sus períodos menstruales?',
     type: 'YES_NO',
     required: false, // Solo para mujeres
     weight: 4,

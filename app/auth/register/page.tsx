@@ -94,11 +94,8 @@ export default function RegisterPage() {
             <HeartIcon className="h-12 w-12 text-primary-600" />
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Registrarse
+            Formulario de Registro
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Crea tu cuenta profesional en SE-Porfiria
-          </p>
         </div>
 
         {/* Form */}
@@ -270,25 +267,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="flex items-center">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                required
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
-                Acepto los{' '}
-                <a href="#" className="text-primary-600 hover:text-primary-500">
-                  términos y condiciones
-                </a>{' '}
-                y la{' '}
-                <a href="#" className="text-primary-600 hover:text-primary-500">
-                  política de privacidad
-                </a>
-              </label>
-            </div>
 
             <div>
               <button

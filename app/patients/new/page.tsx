@@ -15,7 +15,6 @@ export default function NewPatientPage() {
     phone: '',
     email: '',
     address: '',
-    medicalHistory: '',
     nationality: '',
     city: '',
     workplace: '',
@@ -54,12 +53,12 @@ export default function NewPatientPage() {
     setIsLoading(true)
     setError('')
 
-    // Validaciones básicas
-    if (!formData.firstName || !formData.lastName || !formData.dni || !formData.birthDate || !formData.gender) {
-      setError('Por favor, completa todos los campos obligatorios.')
-      setIsLoading(false)
-      return
-    }
+     // Validaciones básicas
+     if (!formData.firstName || !formData.lastName || !formData.dni || !formData.birthDate || !formData.gender || !formData.phone) {
+       setError('Por favor, completa todos los campos obligatorios.')
+       setIsLoading(false)
+       return
+     }
 
     // Validar DNI (8 dígitos)
     if (!/^\d{8}$/.test(formData.dni)) {
@@ -116,7 +115,6 @@ export default function NewPatientPage() {
               <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Nuevo Paciente</h1>
-                <p className="text-sm text-gray-600">Registra un nuevo paciente en el sistema</p>
               </div>
             </div>
             <Link href="/patients" className="btn-secondary">
@@ -244,21 +242,6 @@ export default function NewPatientPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="city" className="label">
-                    Localidad
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
-                    id="city"
-                    className="input-field"
-                    placeholder="Buenos Aires"
-                    value={formData.city}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div>
                   <label htmlFor="maritalStatus" className="label">
                     Estado Civil
                   </label>
@@ -277,21 +260,6 @@ export default function NewPatientPage() {
                     <option value="concubinato">Concubinato</option>
                   </select>
                 </div>
-
-                <div>
-                  <label htmlFor="occupation" className="label">
-                    Ocupación
-                  </label>
-                  <input
-                    type="text"
-                    name="occupation"
-                    id="occupation"
-                    className="input-field"
-                    placeholder="Ingeniero, Médico, etc."
-                    value={formData.occupation}
-                    onChange={handleChange}
-                  />
-                </div>
               </div>
             </div>
 
@@ -299,20 +267,21 @@ export default function NewPatientPage() {
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Información de Contacto</h3>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="phone" className="label">
-                    Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    id="phone"
-                    className="input-field"
-                    placeholder="+54 11 1234-5678"
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                </div>
+                 <div>
+                   <label htmlFor="phone" className="label">
+                     Teléfono *
+                   </label>
+                   <input
+                     type="tel"
+                     name="phone"
+                     id="phone"
+                     required
+                     className="input-field"
+                     placeholder="+54 11 1234-5678"
+                     value={formData.phone}
+                     onChange={handleChange}
+                   />
+                 </div>
 
                 <div>
                   <label htmlFor="email" className="label">
@@ -343,31 +312,31 @@ export default function NewPatientPage() {
                     onChange={handleChange}
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Información Laboral y Obra Social */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Información Laboral y Obra Social</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="workplace" className="label">
-                    Lugar de Trabajo
+                  <label htmlFor="city" className="label">
+                    Localidad
                   </label>
                   <input
                     type="text"
-                    name="workplace"
-                    id="workplace"
+                    name="city"
+                    id="city"
                     className="input-field"
-                    placeholder="Empresa, Institución, etc."
-                    value={formData.workplace}
+                    placeholder="Buenos Aires"
+                    value={formData.city}
                     onChange={handleChange}
                   />
                 </div>
+              </div>
+            </div>
 
+            {/* Información Obra Social */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Información Obra Social</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <label htmlFor="healthInsurance" className="label">
-                    Obra Social
+                    Nombre
                   </label>
                   <input
                     type="text"
@@ -382,7 +351,7 @@ export default function NewPatientPage() {
 
                 <div>
                   <label htmlFor="insuranceNumber" className="label">
-                    Nro de Afiliado
+                    Número de Afiliado
                   </label>
                   <input
                     type="text"
@@ -391,6 +360,42 @@ export default function NewPatientPage() {
                     className="input-field"
                     placeholder="12345678"
                     value={formData.insuranceNumber}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Información Laboral */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Información Laboral</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="occupation" className="label">
+                    Ocupación
+                  </label>
+                  <input
+                    type="text"
+                    name="occupation"
+                    id="occupation"
+                    className="input-field"
+                    placeholder="Ingeniero, Médico, etc."
+                    value={formData.occupation}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="workplace" className="label">
+                    Lugar de Trabajo
+                  </label>
+                  <input
+                    type="text"
+                    name="workplace"
+                    id="workplace"
+                    className="input-field"
+                    placeholder="Empresa, Institución, etc."
+                    value={formData.workplace}
                     onChange={handleChange}
                   />
                 </div>
@@ -412,24 +417,6 @@ export default function NewPatientPage() {
               </div>
             </div>
 
-            {/* Historia Médica */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Historia Médica</h3>
-              <div>
-                <label htmlFor="medicalHistory" className="label">
-                  Antecedentes Médicos Relevantes
-                </label>
-                <textarea
-                  name="medicalHistory"
-                  id="medicalHistory"
-                  rows={4}
-                  className="input-field"
-                  placeholder="Describa cualquier antecedente médico relevante, medicamentos actuales, alergias, etc."
-                  value={formData.medicalHistory}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
 
             {/* Botones */}
             <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
