@@ -10,8 +10,10 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   EyeIcon,
-  PencilIcon
+  PencilIcon,
+  BeakerIcon
 } from '@heroicons/react/24/outline'
+import { TrashIcon } from '@heroicons/react/24/solid'
 
 import { questionnaireQuestions, SYMPTOM_CATEGORIES } from '@/lib/constants/questionnaire-questions';
 
@@ -36,6 +38,7 @@ export default function ViewQuestionnairePage() {
   const [selectedPatient, setSelectedPatient] = useState<any>(null)
   const [questionnaire, setQuestionnaire] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   const params = useParams()
 
@@ -122,6 +125,34 @@ export default function ViewQuestionnairePage() {
     return { cutaneousScore, acuteScore }
   }
 
+  const handleDeleteQuestionnaire = async () => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este cuestionario? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/questionnaires/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al eliminar cuestionario');
+      }
+
+      const result = await response.json();
+      
+      alert(`Cuestionario eliminado exitosamente. Se eliminaron ${result.deletedAnswers} respuestas.`);
+      router.push('/patients');
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar el cuestionario: ' + (error as Error).message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -168,6 +199,18 @@ export default function ViewQuestionnairePage() {
                 <PencilIcon className="h-5 w-5 mr-2" />
                 Editar
               </Link>
+              <button
+                onClick={handleDeleteQuestionnaire}
+                disabled={isDeleting}
+                className="btn-danger"
+              >
+                {isDeleting ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                ) : (
+                  <TrashIcon className="h-5 w-5 mr-2" />
+                )}
+                {isDeleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
               <Link href="/patients" className="btn-secondary">
                 <ArrowLeftIcon className="h-5 w-5 mr-2" />
                 Volver
@@ -211,70 +254,168 @@ export default function ViewQuestionnairePage() {
                 {getRecommendationIcon(questionnaire.testRecommendation)}
               </div>
               
-              <h3 className="text-xl font-semibold text-gray-900 text-center mb-4">
-                {questionnaire.testRecommendation === 'PBG_URINE_TEST' && (
-                  questionnaire.tipoPorfiria && questionnaire.tipoPorfiria !== 'NO_APLICA' 
-                    ? `Sospecha de Porfiria ${questionnaire.tipoPorfiria === 'CUTANEA' ? 'Cutánea' : questionnaire.tipoPorfiria === 'AGUDA' ? 'Aguda' : ''}`
-                    : 'Sospecha de Porfiria'
-                )}
-                {questionnaire.testRecommendation === 'FOLLOW_UP_REQUIRED' && 'Seguimiento Requerido'}
-                {questionnaire.testRecommendation === 'NO_TEST_NEEDED' && 'Sin Indicación de Test'}
-              </h3>
-
-              {questionnaire.notes && (
-                <p className="text-gray-700 text-center mb-6">
-                  {questionnaire.notes}
-                </p>
-              )}
-              
-              {/* Mostrar puntaje calculado dinámicamente */}
               {(() => {
-                const { cutaneousScore, acuteScore } = calculateCategoryScores()
-                const totalScore = cutaneousScore + acuteScore
+                let kieData = null
+                try {
+                  kieData = JSON.parse(questionnaire.recommendationData || '{}')
+                } catch (e) {
+                  console.warn('Error parsing KIE data:', e)
+                }
                 
+                if (kieData && kieData.diagnostico) {
+                  const { sintomaCutanea, sintomaAguda } = kieData.diagnostico
+                  const hasSuspicion = sintomaCutanea || sintomaAguda
+                  
+                  return (
+                    <>
+                      <h3 className="text-xl font-semibold text-gray-900 text-center mb-4">
+                        {hasSuspicion ? 'Sospecha de Porfiria' : 'Sin sospecha de Porfiria'}
+                      </h3>
+                      
+                      <p className="text-gray-700 text-center mb-6">
+                        {hasSuspicion ? (
+                          sintomaCutanea && sintomaAguda 
+                            ? 'Diagnóstico temprano: Sospecha de Porfiria Cutánea y Aguda'
+                            : sintomaCutanea 
+                            ? 'Diagnóstico temprano: Sospecha de Porfiria Cutánea'
+                            : 'Diagnóstico temprano: Sospecha de Porfiria Aguda'
+                        ) : (
+                          'Diagnóstico temprano: Se sugiere hacer seguimiento'
+                        )}
+                      </p>
+                    </>
+                  )
+                }
+                
+                // Fallback si no hay datos KIE
                 return (
-                  <div className="mt-6 bg-white p-4 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-900">Puntuación Total:</span>
-                        <span className="ml-2 text-gray-700 font-semibold">{totalScore} puntos</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-900">Síntomas Cutáneos:</span>
-                        <span className="ml-2 text-gray-700 font-semibold">{cutaneousScore} puntos</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-900">Síntomas Agudos:</span>
-                        <span className="ml-2 text-gray-700 font-semibold">{acuteScore} puntos</span>
-                      </div>
-                    </div>
-                    {questionnaire.criticalSymptoms && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <span className="font-medium text-gray-900">Síntomas Críticos:</span>
-                        <span className="ml-2 text-gray-700 font-semibold">{questionnaire.criticalSymptoms}</span>
-                      </div>
+                  <>
+                    <h3 className="text-xl font-semibold text-gray-900 text-center mb-4">
+                      {questionnaire.testRecommendation === 'PBG_URINE_TEST' && 'Sospecha de Porfiria'}
+                      {questionnaire.testRecommendation === 'FOLLOW_UP_REQUIRED' && 'Seguimiento Requerido'}
+                      {questionnaire.testRecommendation === 'NO_TEST_NEEDED' && 'Sin Indicación de Test'}
+                    </h3>
+                    {questionnaire.notes && (
+                      <p className="text-gray-700 text-center mb-6">
+                        {questionnaire.notes}
+                      </p>
                     )}
-                    {questionnaire.tipoPorfiria && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <span className="font-medium text-gray-900">Tipo de Porfiria:</span>
-                        <span className="ml-2 text-gray-700 font-semibold">{questionnaire.tipoPorfiria}</span>
-                      </div>
-                    )}
-                  </div>
+                  </>
                 )
               })()}
+              
+              {/* Mostrar datos del KIE server */}
+              {(() => {
+                let kieData = null
+                try {
+                  kieData = JSON.parse(questionnaire.recommendationData || '{}')
+                } catch (e) {
+                  console.warn('Error parsing KIE data:', e)
+                }
+                
+                if (kieData && kieData.cuadroClinico) {
+                  return (
+                    <div className="mt-6 bg-white p-4 rounded-lg">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-900">Síntomas Cutáneos:</span>
+                          <span className="ml-2 text-gray-700 font-semibold">{kieData.cuadroClinico.sintomasCutanea || 0} puntos</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900">Síntomas Agudos:</span>
+                          <span className="ml-2 text-gray-700 font-semibold">{kieData.cuadroClinico.sintomasAguda || 0} puntos</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900">Anamnesis:</span>
+                          <span className="ml-2 text-gray-700 font-semibold">{kieData.cuadroClinico.anamnesis || 0} puntos</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                
+                return null
+              })()}
 
-              {/* Mostrar estudios recomendados solo si hay indicación de test */}
-              {questionnaire.testRecommendation !== 'NO_TEST_NEEDED' && questionnaire.estudiosRecomendados && (
-                <div className="mt-6 bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Estudios Recomendados:</h4>
-                  <ul className="list-disc pl-5 text-gray-700">
-                    {JSON.parse(questionnaire.estudiosRecomendados).map((estudio: string, index: number) => (
-                      <li key={index}>{estudio}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {/* Mostrar estudios recomendados basados en KIE server */}
+              {(() => {
+                let kieData = null
+                try {
+                  kieData = JSON.parse(questionnaire.recommendationData || '{}')
+                } catch (e) {
+                  console.warn('Error parsing KIE data:', e)
+                }
+                
+                if (kieData && kieData.ordenes && kieData.ordenes.estudios && kieData.diagnostico) {
+                  const { sintomaCutanea, sintomaAguda } = kieData.diagnostico
+                  let estudios: string[] = []
+                  
+                  if (sintomaAguda) {
+                    estudios = ['PBG (Porfobilinógeno)', 'IPP (Isómeros de Porfirinas)', 'ALA (Ácido Aminolevulínico)', 'PTO (Porfirinas Totales en Orina)']
+                  } else if (sintomaCutanea) {
+                    estudios = ['IPP (Isómeros de Porfirinas)', 'PTO (Porfirinas Totales en Orina)', 'CRO (Coproporfirinas)', 'PBG (Porfobilinógeno)']
+                  }
+                  
+                  if (estudios.length > 0) {
+                    return (
+                      <div className="mt-6 bg-white p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-900 mb-2">Estudios Recomendados:</h4>
+                        <ul className="list-disc pl-5 text-gray-700">
+                          {estudios.map((estudio: string, index: number) => (
+                            <li key={index}>{estudio}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  }
+                }
+                
+                // Fallback a estudios guardados en BD
+                if (questionnaire.testRecommendation !== 'NO_TEST_NEEDED' && questionnaire.estudiosRecomendados) {
+                  return (
+                    <div className="mt-6 bg-white p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-2">Sospecha de Porfiria:</h4>
+                      <ul className="list-disc pl-5 text-gray-700">
+                        {JSON.parse(questionnaire.estudiosRecomendados).map((estudio: string, index: number) => (
+                          <li key={index}>{estudio}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
+                }
+                
+                return null
+              })()}
+
+              {/* Botón de medicamentos si KIE server lo indica */}
+              {(() => {
+                let kieData = null
+                try {
+                  kieData = JSON.parse(questionnaire.recommendationData || '{}')
+                } catch (e) {
+                  console.warn('Error parsing KIE data:', e)
+                }
+                
+                if (kieData && kieData.medicamentos && kieData.medicamentos.medicamentos) {
+                  return (
+                    <div className="mt-6 bg-white p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-2">Medicación:</h4>
+                      <p className="text-gray-700 mb-4">
+                        Se recomienda revisar la medicación contraindicada.
+                      </p>
+                      <Link 
+                        href="/medicamentos" 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                      >
+                        <BeakerIcon className="h-5 w-5 mr-2" />
+                        Revisar Medicamentos
+                      </Link>
+                    </div>
+                  )
+                }
+                
+                return null
+              })()}
               
             </div>
           </div>
@@ -368,6 +509,18 @@ export default function ViewQuestionnairePage() {
                   <PencilIcon className="h-5 w-5 mr-2" />
                   Editar Cuestionario
                 </Link>
+                <button
+                  onClick={handleDeleteQuestionnaire}
+                  disabled={isDeleting}
+                  className="btn-danger"
+                >
+                  {isDeleting ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <TrashIcon className="h-5 w-5 mr-2" />
+                  )}
+                  {isDeleting ? 'Eliminando...' : 'Eliminar Cuestionario'}
+                </button>
                 <Link href="/patients" className="btn-secondary">
                   <ArrowLeftIcon className="h-5 w-5 mr-2" />
                   Volver a Pacientes

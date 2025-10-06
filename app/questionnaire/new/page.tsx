@@ -35,12 +35,11 @@ export default function NewQuestionnairePage() {
   const [patientId, setPatientId] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [showResults, setShowResults] = useState(false)
-  const [recommendation, setRecommendation] = useState<any>(null)
   // Estado para la lista de pacientes
   const [patients, setPatients] = useState<any[]>([])
   const [loadingPatients, setLoadingPatients] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [kieStatus, setKieStatus] = useState<{ ok: boolean, message: string } | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -49,6 +48,19 @@ export default function NewQuestionnairePage() {
   const isFirstQuestion = currentQuestionIndex === 0
 
   useEffect(() => {
+    const checkKieHealth = async () => {
+      try {
+        const res = await fetch('/api/kie/health', { cache: 'no-store' })
+        const ok = res.ok
+        const message = await res.text()
+        setKieStatus({ ok, message })
+      } catch (e: any) {
+        setKieStatus({ ok: false, message: e?.message || 'Error' })
+      }
+    }
+
+    checkKieHealth()
+
     const patientIdParam = searchParams.get('patientId');
     
     const loadPatients = async () => {
@@ -126,6 +138,58 @@ export default function NewQuestionnairePage() {
     
     loadPatients();
   }, [searchParams, router]);
+
+  // Si KIE está caído, mostrar mensaje de error
+  if (kieStatus && !kieStatus.ok) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center">
+                <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Nuevo Cuestionario</h1>
+                </div>
+              </div>
+              <Link href="/patients" className="btn-secondary">
+                <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                Volver
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="card">
+            <div className="text-center">
+              <ExclamationTriangleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Servicio de Evaluación No Disponible
+              </h2>
+              <p className="text-gray-600 mb-6">
+                El motor de reglas (KIE server) no está disponible en este momento.
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Error: {kieStatus.message}
+              </p>
+              <div className="space-x-4">
+                <Link href="/patients" className="btn-secondary">
+                  Volver a Pacientes
+                </Link>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn-primary"
+                >
+                  Reintentar
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers(prev => ({
@@ -270,18 +334,18 @@ export default function NewQuestionnairePage() {
   }
 
   const calculateRecommendation = async () => {
-    console.log('🧠 [DEBUG] Iniciando cálculo de recomendación...');
+    console.log('🧠 [DEBUG] Iniciando evaluación con KIE server...');
     console.log('👤 [DEBUG] Paciente seleccionado:', selectedPatient);
     console.log('📋 [DEBUG] Respuestas del cuestionario:', answers);
     
     try {
       const patientData = {
         id: selectedPatient.id,
-        firstName: selectedPatient.name.split(' ')[0],
-        lastName: selectedPatient.name.split(' ').slice(1).join(' '),
+        firstName: selectedPatient.firstName,
+        lastName: selectedPatient.lastName,
         dni: selectedPatient.dni,
-        age: 35,
-        gender: 'F' as const,
+        age: new Date().getFullYear() - new Date(selectedPatient.birthDate).getFullYear(),
+        gender: selectedPatient.gender as 'M' | 'F',
         familyHistory: answers['familiares'] === 'SI',
         medications: [],
         alcoholConsumption: answers['consumeAlcohol'] === 'SI',
@@ -297,38 +361,23 @@ export default function NewQuestionnairePage() {
         timestamp: new Date()
       }));
 
-      console.log('📝 [DEBUG] Respuestas formateadas para Drools:', responses);
+      console.log('📝 [DEBUG] Respuestas formateadas para KIE server:', responses);
       console.log('🔗 [DEBUG] Llamando a evaluateWithDrools...');
 
-      const result = await evaluateWithDrools(
-        patientData, 
-        responses, 
-        calculateRecommendationFallback
-      );
+      const result = await evaluateWithDrools(patientData, responses);
       
-      console.log('🎯 [DEBUG] Resultado de Drools:', result);
+      console.log('🎯 [DEBUG] Resultado de KIE server:', result);
       
-      if (result.success && result.recommendation) {
-        console.log('✅ [DEBUG] Recomendación exitosa de Drools:', result.recommendation);
-        return {
-          testType: result.recommendation.testType,
-          confidence: result.recommendation.confidence,
-          message: result.recommendation.message,
-          score: result.recommendation.score,
-          criticalSymptoms: result.recommendation.criticalSymptoms,
-          reasoning: result.recommendation.reasoning,
-          riskFactors: result.recommendation.riskFactors,
-          recommendedTests: result.recommendation.recommendedTests,
-          contraindicatedMedications: result.recommendation.contraindicatedMedications
-        };
+      if (result.success && result.raw) {
+        console.log('✅ [DEBUG] Evaluación exitosa de KIE server:', result.raw);
+        return result.raw;
       } else {
-        console.log('⚠️ [DEBUG] Drools falló, usando lógica de fallback');
-        return calculateRecommendationFallback();
+        console.log('❌ [DEBUG] KIE server falló:', result.error);
+        throw new Error(result.error || 'Error del KIE server');
       }
     } catch (error) {
-      console.error('❌ [DEBUG] Error en evaluación con Drools:', error);
-      console.log('🔄 [DEBUG] Usando lógica de fallback debido al error');
-      return calculateRecommendationFallback();
+      console.error('❌ [DEBUG] Error en evaluación con KIE server:', error);
+      throw error;
     }
   };
 
@@ -374,10 +423,11 @@ export default function NewQuestionnairePage() {
       }
 
       console.log('✅ [DEBUG] Cuestionario guardado exitosamente');
-      console.log('🎯 [DEBUG] Paso 4: Mostrando resultados...');
+      console.log('🎯 [DEBUG] Paso 4: Redirigiendo a vista del cuestionario...');
       
-      setRecommendation(recommendation);
-      setShowResults(true);
+      // Redirigir a la página de visualización del cuestionario
+      const savedQuestionnaire = await saveResponse.json();
+      router.push(`/questionnaire/view/${savedQuestionnaire.id}`);
       
       console.log('🎉 [DEBUG] Proceso completado exitosamente');
     } catch (error) {
@@ -389,127 +439,6 @@ export default function NewQuestionnairePage() {
     }
   }
 
-  const getRecommendationIcon = (recommendation: DroolsRecommendation) => {
-    switch (recommendation.testType) {
-      case 'PBG_URINE_TEST':
-        return <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
-      case 'FOLLOW_UP_REQUIRED':
-        return <ExclamationTriangleIcon className="h-8 w-8 text-yellow-600" />
-      default:
-        return <CheckCircleIcon className="h-8 w-8 text-green-600" />
-    }
-  }
-
-  const getRecommendationColor = (recommendation: DroolsRecommendation) => {
-    switch (recommendation.testType) {
-      case 'PBG_URINE_TEST':
-        return 'border-red-200 bg-red-50'
-      case 'FOLLOW_UP_REQUIRED':
-        return 'border-yellow-200 bg-yellow-50'
-      default:
-        return 'border-green-200 bg-green-50'
-    }
-  }
-
-  if (showResults && recommendation) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div className="flex items-center">
-                <HeartIcon className="h-8 w-8 text-primary-600 mr-3" />
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Resultados del Cuestionario</h1>
-                  <p className="text-sm text-gray-600">Evaluación completada</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="card">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Evaluación Completada
-              </h2>
-              <p className="text-gray-600">
-                Paciente: {selectedPatient?.name} (DNI: {selectedPatient?.dni})
-              </p>
-            </div>
-
-            <div className={`border-2 rounded-lg p-6 ${getRecommendationColor(recommendation)}`}>
-              <div className="flex items-center justify-center mb-4">
-                {getRecommendationIcon(recommendation)}
-              </div>
-              
-              <h3 className="text-xl font-semibold text-gray-900 text-center mb-4">
-                {recommendation.testType === 'PBG_URINE_TEST' && 'Test de PBG Recomendado'}
-                {recommendation.testType === 'FOLLOW_UP_REQUIRED' && 'Seguimiento Requerido'}
-                {recommendation.testType === 'NO_TEST_NEEDED' && 'Sin Indicación de Test'}
-              </h3>
-
-              <p className="text-gray-700 text-center mb-6">
-                {recommendation.message}
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900">Puntuación Total</h4>
-                  <p className="text-2xl font-bold text-primary-600">{recommendation.score}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900">Síntomas Críticos</h4>
-                  <p className="text-2xl font-bold text-red-600">{recommendation.criticalSymptoms}</p>
-                </div>
-              </div>
-
-              {recommendation.estudiosRecomendados && recommendation.estudiosRecomendados.length > 0 && (
-                <div className="mt-6 bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Estudios Recomendados:</h4>
-                  <ul className="list-disc pl-5 text-gray-700">
-                    {recommendation.estudiosRecomendados.map((estudio: string, index: number) => (
-                      <li key={index}>{estudio}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {recommendation.medicamentosContraproducentes && recommendation.medicamentosContraproducentes.length > 0 && (
-                <div className="mt-4 bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Medicamentos Contraindicados:</h4>
-                  <ul className="list-disc pl-5 text-gray-700">
-                    {recommendation.medicamentosContraproducentes.map((medicamento: string, index: number) => (
-                      <li key={index}>{medicamento}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="text-center mt-6">
-                <p className="text-sm text-gray-600 mb-4">
-                  <strong>Importante:</strong> Esta recomendación es solo orientativa y no reemplaza el juicio clínico profesional.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-center space-x-4 mt-8">
-              <Link href="/patients" className="btn-secondary">
-                Ver Pacientes
-              </Link>
-              <Link 
-                href={`/questionnaire/edit/${selectedPatient.id}`} 
-                className="btn-primary"
-              >
-                Editar Respuestas
-              </Link>
-            </div>
-          </div>
-        </main>
-      </div>
-    )
-  }
 
   if (!selectedPatient) {
     // Si no hay patientId en la URL, mostrar la selección de paciente

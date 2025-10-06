@@ -108,11 +108,11 @@ export default function EditQuestionnairePage() {
       // Recalcular recomendación
       const patientData = {
         id: selectedPatient.id,
-        firstName: selectedPatient.name.split(' ')[0],
-        lastName: selectedPatient.name.split(' ').slice(1).join(' '),
+        firstName: selectedPatient.firstName,
+        lastName: selectedPatient.lastName,
         dni: selectedPatient.dni,
-        age: 35,
-        gender: 'F' as const,
+        age: new Date().getFullYear() - new Date(selectedPatient.birthDate).getFullYear(),
+        gender: selectedPatient.gender as 'M' | 'F',
         familyHistory: answers['familiares'] === 'SI',
         medications: [],
         alcoholConsumption: answers['consumeAlcohol'] === 'SI',
@@ -285,7 +285,7 @@ export default function EditQuestionnairePage() {
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Editar Cuestionario</h1>
                 <p className="text-sm text-gray-600">
-                  {selectedPatient.name} (DNI: {selectedPatient.dni})
+                  {selectedPatient.firstName} {selectedPatient.lastName} (DNI: {selectedPatient.dni})
                 </p>
               </div>
             </div>

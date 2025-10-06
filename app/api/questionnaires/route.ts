@@ -103,41 +103,42 @@ export async function POST(request: Request) {
     console.log('📝 [DEBUG] Respuestas formateadas:', responses);
     console.log('🔗 [DEBUG] Llamando a evaluateWithDrools...');
 
-    // Evaluar con Drools
-    const droolsResult = await evaluateWithDrools(patientData, responses);
+    // Evaluar con KIE server
+    const kieResult = await evaluateWithDrools(patientData, responses);
     
-    console.log('🎯 [DEBUG] Resultado de Drools en API:', droolsResult);
+    console.log('🎯 [DEBUG] Resultado de KIE server en API:', kieResult);
 
-    if (!droolsResult.success) {
-      console.error('❌ [DEBUG] Error en evaluación Drools:', droolsResult.error);
+    if (!kieResult.success) {
+      console.error('❌ [DEBUG] Error en evaluación KIE server:', kieResult.error);
       return NextResponse.json(
         { error: 'Error al evaluar el cuestionario con el motor de reglas' },
         { status: 500 }
       );
     }
 
-    console.log('✅ [DEBUG] Evaluación Drools exitosa, guardando en BD...');
-    console.log('💾 [DEBUG] Recomendación a guardar:', droolsResult.recommendation);
+    console.log('✅ [DEBUG] Evaluación KIE server exitosa, guardando en BD...');
+    console.log('💾 [DEBUG] Resultado KIE a guardar:', kieResult.raw);
 
     // Crear el cuestionario y sus respuestas en una transacción
     const questionnaire = await prisma.$transaction(async (tx) => {
-      // 1. Crear el cuestionario
+      // 1. Crear el cuestionario con datos del KIE server
       const newQuestionnaire = await tx.questionnaire.create({
         data: {
           patientId,
           doctorId: decoded.userId, // Usar el ID del usuario autenticado
           isCompleted: true,
           completedAt: new Date(),
-          testRecommendation: droolsResult.recommendation?.testType || null,
-          notes: droolsResult.recommendation?.message || null,
-          // Guardar toda la información de la recomendación
-          recommendationData: JSON.stringify(droolsResult.recommendation),
-          estudiosRecomendados: JSON.stringify(droolsResult.recommendation?.estudiosRecomendados || []),
-          medicamentosContraproducentes: JSON.stringify(droolsResult.recommendation?.medicamentosContraproducentes || []),
-          confidence: droolsResult.recommendation?.confidence || null,
-          score: droolsResult.recommendation?.score || null,
-          criticalSymptoms: droolsResult.recommendation?.criticalSymptoms || null,
-          tipoPorfiria: droolsResult.recommendation?.tipoPorfiria || null
+          // Guardar toda la respuesta del KIE server
+          recommendationData: JSON.stringify(kieResult.raw),
+          // Extraer datos específicos para campos existentes
+          testRecommendation: kieResult.raw?.ordenes?.estudios ? 'PBG_URINE_TEST' : 'NO_TEST_NEEDED',
+          notes: `Diagnóstico: cutánea=${kieResult.raw?.diagnostico?.sintomaCutanea ? 'SI' : 'NO'}, aguda=${kieResult.raw?.diagnostico?.sintomaAguda ? 'SI' : 'NO'}`,
+          estudiosRecomendados: JSON.stringify(kieResult.raw?.ordenes?.estudios ? ['PBG'] : []),
+          medicamentosContraproducentes: JSON.stringify(kieResult.raw?.medicamentos?.medicamentos ? ['Revisar medicación'] : []),
+          confidence: 'medium', // Valor por defecto
+          score: kieResult.raw?.cuadroClinico?.anamnesis || null,
+          criticalSymptoms: kieResult.raw?.cuadroClinico?.sintomasAguda || null,
+          tipoPorfiria: null // No disponible en la respuesta KIE
         }
       });
 

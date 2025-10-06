@@ -8,7 +8,8 @@ import {
   PencilIcon, 
   DocumentPlusIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  TrashIcon
 } from '@heroicons/react/24/solid'
 
 interface Patient {
@@ -37,6 +38,7 @@ export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingPatient, setDeletingPatient] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPatients = async () => {
@@ -72,6 +74,36 @@ export default function PatientsPage() {
 
     loadPatients();
   }, []);
+
+  const handleDeletePatient = async (patientId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este paciente y todos sus cuestionarios? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    setDeletingPatient(patientId);
+    try {
+      const response = await fetch(`/api/patients?id=${patientId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al eliminar paciente');
+      }
+
+      const result = await response.json();
+      
+      // Actualizar la lista de pacientes
+      setPatients(patients.filter(patient => patient.id !== patientId));
+      
+      alert(`Paciente eliminado exitosamente. Se eliminaron ${result.deletedQuestionnaires} cuestionarios.`);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar el paciente: ' + (error as Error).message);
+    } finally {
+      setDeletingPatient(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -256,6 +288,18 @@ export default function PatientsPage() {
                             <DocumentPlusIcon className="h-5 w-5" />
                           </Link>
                         )}
+                        <button
+                          onClick={() => handleDeletePatient(patient.id)}
+                          disabled={deletingPatient === patient.id}
+                          className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Eliminar paciente"
+                        >
+                          {deletingPatient === patient.id ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                          ) : (
+                            <TrashIcon className="h-5 w-5" />
+                          )}
+                        </button>
                       </div>
                     </td>
                   </tr>

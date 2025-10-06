@@ -245,3 +245,86 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Verificar autenticación
+    const cookieStore = cookies();
+    const token = cookieStore.get('auth_token');
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      );
+    }
+
+    // Obtener el ID del usuario del token
+    const decoded = jwt.verify(token.value, process.env.JWT_SECRET || 'default_secret') as { userId: string };
+
+    // Verificar que el usuario existe
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { role: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Solo CIPYP puede eliminar cuestionarios
+    if (user.role !== 'CIPYP') {
+      return NextResponse.json(
+        { error: 'Solo el personal de CIPYP puede eliminar cuestionarios' },
+        { status: 403 }
+      );
+    }
+
+    // Verificar que el cuestionario existe
+    const questionnaire = await prisma.questionnaire.findUnique({
+      where: { id: params.id },
+      include: {
+        answers: true
+      }
+    });
+
+    if (!questionnaire) {
+      return NextResponse.json(
+        { error: 'Cuestionario no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Eliminar cuestionario y sus respuestas en una transacción
+    await prisma.$transaction(async (tx) => {
+      // Eliminar respuestas
+      await tx.answer.deleteMany({
+        where: {
+          questionnaireId: params.id
+        }
+      });
+
+      // Eliminar cuestionario
+      await tx.questionnaire.delete({
+        where: { id: params.id }
+      });
+    });
+
+    return NextResponse.json({ 
+      message: 'Cuestionario eliminado exitosamente',
+      deletedAnswers: questionnaire.answers.length
+    });
+  } catch (error) {
+    console.error('Error al eliminar cuestionario:', error);
+    return NextResponse.json(
+      { error: 'Error al eliminar el cuestionario' },
+      { status: 500 }
+    );
+  }
+}

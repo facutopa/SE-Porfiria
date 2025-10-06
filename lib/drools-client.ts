@@ -107,29 +107,9 @@ export class DroolsClient {
       const kieResult = await response.json();
       console.log('🎯 [DEBUG] Resultado KIE:', kieResult);
 
-      // Mapear respuesta KIE a nuestra recomendación interna mínimamente disruptiva
-      const diagnostico = kieResult?.diagnostico;
-      const ordenes = kieResult?.ordenes;
-      const medicamentos = kieResult?.medicamentos;
-      const cuadroClinico = kieResult?.cuadroClinico;
-
-      const recommendation: DroolsRecommendation = {
-        testType: ordenes?.estudios ? 'PBG_URINE_TEST' : 'NO_TEST_NEEDED',
-        confidence: 'medium',
-        message: diagnostico
-          ? `Diagnóstico temprano: cutánea=${diagnostico.sintomaCutanea ? 'SI' : 'NO'}, aguda=${diagnostico.sintomaAguda ? 'SI' : 'NO'}`
-          : 'Resultado disponible',
-        score: typeof cuadroClinico?.anamnesis === 'number' ? Number(cuadroClinico.anamnesis) : null,
-        criticalSymptoms: typeof cuadroClinico?.sintomasAguda === 'number' ? Number(cuadroClinico.sintomasAguda) : null,
-        reasoning: [],
-        riskFactors: [],
-        estudiosRecomendados: ordenes?.estudios ? ['PBG'] : [],
-        medicamentosContraproducentes: medicamentos?.medicamentos ? ['Revisar medicación'] : []
-      } as unknown as DroolsRecommendation;
-
+      // Devolver directamente la respuesta del KIE server sin transformaciones
       return {
         success: true,
-        recommendation,
         raw: kieResult
       };
     } catch (error) {
