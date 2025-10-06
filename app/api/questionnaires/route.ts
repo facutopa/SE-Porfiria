@@ -132,7 +132,20 @@ export async function POST(request: Request) {
           recommendationData: JSON.stringify(kieResult.raw),
           // Extraer datos específicos para campos existentes
           testRecommendation: kieResult.raw?.ordenes?.estudios ? 'PBG_URINE_TEST' : 'NO_TEST_NEEDED',
-          notes: `Diagnóstico: cutánea=${kieResult.raw?.diagnostico?.sintomaCutanea ? 'SI' : 'NO'}, aguda=${kieResult.raw?.diagnostico?.sintomaAguda ? 'SI' : 'NO'}`,
+          notes: (() => {
+            const sintomaCutanea = kieResult.raw?.diagnostico?.sintomaCutanea;
+            const sintomaAguda = kieResult.raw?.diagnostico?.sintomaAguda;
+            
+            if (sintomaCutanea && sintomaAguda) {
+              return 'Sospecha de Porfiria Cutánea y Aguda';
+            } else if (sintomaCutanea) {
+              return 'Sospecha de Porfiria Cutánea';
+            } else if (sintomaAguda) {
+              return 'Sospecha de Porfiria Aguda';
+            } else {
+              return 'Sin sospecha de Porfiria';
+            }
+          })(),
           estudiosRecomendados: JSON.stringify(kieResult.raw?.ordenes?.estudios ? ['PBG'] : []),
           medicamentosContraproducentes: JSON.stringify(kieResult.raw?.medicamentos?.medicamentos ? ['Revisar medicación'] : []),
           confidence: 'medium', // Valor por defecto

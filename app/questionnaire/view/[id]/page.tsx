@@ -401,7 +401,7 @@ export default function ViewQuestionnairePage() {
                     <div className="mt-6 bg-white p-4 rounded-lg">
                       <h4 className="font-medium text-gray-900 mb-2">Medicación:</h4>
                       <p className="text-gray-700 mb-4">
-                        Se recomienda revisar la medicación contraindicada.
+                        Se recomienda revisar los medicamentos contraindicados.
                       </p>
                       <Link 
                         href="/medicamentos" 

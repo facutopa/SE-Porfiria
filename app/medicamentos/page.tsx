@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { HeartIcon, MagnifyingGlassIcon, ExclamationTriangleIcon, CheckCircleIcon, XCircleIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 
@@ -15,7 +15,7 @@ interface Medicine {
 
 export default function MedicinesPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [medicines, setMedicines] = useState<Medicine[]>([])
+  const [allMedicines, setAllMedicines] = useState<Medicine[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [filterClass, setFilterClass] = useState('')
@@ -24,23 +24,19 @@ export default function MedicinesPage() {
   const [uniqueConclusions, setUniqueConclusions] = useState<string[]>([])
   const [totalInDatabase, setTotalInDatabase] = useState<number>(0)
 
-  const loadMedicines = async () => {
+  // Cargar todos los medicamentos una sola vez al inicio
+  const loadAllMedicines = async () => {
     setLoading(true)
     setError('')
     
     try {
-      const params = new URLSearchParams()
-      if (searchTerm) params.append('search', searchTerm)
-      if (filterClass) params.append('class', filterClass)
-      if (filterConclusion) params.append('conclusion', filterConclusion)
-      
-      const response = await fetch(`/api/medicines?${params.toString()}`)
+      const response = await fetch('/api/medicines')
       if (!response.ok) {
         throw new Error('Error al cargar medicamentos')
       }
       
       const data = await response.json()
-      setMedicines(data.medicines)
+      setAllMedicines(data.medicines)
       setUniqueClasses(data.filters.classes)
       setUniqueConclusions(data.filters.conclusions)
       setTotalInDatabase(data.totalInDatabase || data.medicines.length)
@@ -53,8 +49,36 @@ export default function MedicinesPage() {
   }
 
   useEffect(() => {
-    loadMedicines()
-  }, [searchTerm, filterClass, filterConclusion])
+    loadAllMedicines()
+  }, [])
+
+  // Filtrado en tiempo real en el lado del cliente
+  const filteredMedicines = useMemo(() => {
+    let filtered = allMedicines
+
+    // Filtro por búsqueda
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      filtered = filtered.filter(medicine =>
+        medicine.genericName.toLowerCase().includes(searchLower) ||
+        medicine.brandName.toLowerCase().includes(searchLower) ||
+        medicine.class.toLowerCase().includes(searchLower) ||
+        medicine.type.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Filtro por clase
+    if (filterClass) {
+      filtered = filtered.filter(medicine => medicine.class === filterClass)
+    }
+
+    // Filtro por conclusión
+    if (filterConclusion) {
+      filtered = filtered.filter(medicine => medicine.conclusion === filterConclusion)
+    }
+
+    return filtered
+  }, [allMedicines, searchTerm, filterClass, filterConclusion])
 
   const getConclusionIcon = (conclusion: string) => {
     switch (conclusion) {
@@ -125,7 +149,7 @@ export default function MedicinesPage() {
           <div className="text-red-600 text-xl mb-4">⚠️</div>
           <p className="text-gray-600">{error}</p>
           <button 
-            onClick={() => loadMedicines()} 
+            onClick={() => loadAllMedicines()} 
             className="mt-4 btn-primary"
           >
             Reintentar
@@ -276,7 +300,7 @@ export default function MedicinesPage() {
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
-              Resultados ({medicines.length} medicamentos encontrados)
+              Resultados ({filteredMedicines.length} medicamentos encontrados)
             </h3>
           </div>
           
@@ -302,7 +326,7 @@ export default function MedicinesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {medicines.map((medicine, index) => (
+                {filteredMedicines.map((medicine, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
@@ -340,7 +364,7 @@ export default function MedicinesPage() {
           </div>
         </div>
 
-        {medicines.length === 0 && (
+        {filteredMedicines.length === 0 && (
           <div className="text-center py-12">
             <MagnifyingGlassIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron medicamentos</h3>
@@ -348,9 +372,9 @@ export default function MedicinesPage() {
             
             {/* Botón para acceder a PorphyriaDrugs.com */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-md mx-auto">
-              <h4 className="text-md font-medium text-blue-900 mb-2">¿No encuentras el medicamento?</h4>
+              <h4 className="text-md font-medium text-blue-900 mb-2">¿No encuentra el medicamento?</h4>
               <p className="text-sm text-blue-700 mb-4">
-                Accede a nuestra base de datos extendida con más de 10,000 medicamentos y información actualizada.
+                Accede a otra base de datos extendida con más de 10,000 medicamentos y información actualizada.
               </p>
               <a
                 href="https://porphyriadrugs.com/"
