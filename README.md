@@ -4,12 +4,13 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 
 ## 🎯 Características Principales
 
-- **Motor de Reglas Drools**: Sistema experto basado en reglas médicas
+- **Motor de Reglas Inteligente**: Sistema experto basado en reglas médicas implementado en TypeScript
 - **PWA (Progressive Web App)**: Aplicación web responsive que funciona offline
 - **Sistema de Cuestionario Inteligente**: Evaluación dinámica basada en síntomas y antecedentes
 - **Gestión de Pacientes**: Registro completo de pacientes y historiales médicos
 - **Dashboard CIPYP**: Panel de control para análisis y seguimiento de casos
 - **Recomendaciones de Tests**: Sistema experto que sugiere tests específicos según el tipo de Porfiria
+- **Base de Datos de Medicamentos**: Integración con base de datos oficial de seguridad farmacológica
 - **Autenticación Segura**: Sistema de login para médicos y personal CIPYP
 
 ## 🏗️ Tecnologías Utilizadas
@@ -17,7 +18,7 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 - **Frontend**: Next.js 14, React 18, TypeScript
 - **Styling**: Tailwind CSS
 - **Base de Datos**: Prisma ORM con SQLite
-- **Motor de Reglas**: Drools con servidor Express
+- **Motor de Reglas**: Sistema de reglas personalizado en TypeScript
 - **PWA**: Service Workers, Web App Manifest
 - **Autenticación**: JWT (JSON Web Tokens)
 - **Validación**: Zod, React Hook Form
@@ -27,9 +28,10 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 ### Para Médicos
 - Registro y gestión de pacientes
 - Cuestionario especializado de evaluación de Porfiria
-- Recomendaciones automáticas basadas en reglas Drools
+- Recomendaciones automáticas basadas en reglas médicas
 - Historial completo de consultas y evaluaciones
 - Dashboard personal con estadísticas
+- Consulta de seguridad de medicamentos
 
 ### Para CIPYP
 - Acceso a todos los casos registrados en el sistema
@@ -47,52 +49,44 @@ Sistema experto desarrollado para asistir en el diagnóstico temprano de Porfiri
 ### Pasos de Instalación
 
 1. **Clonar el repositorio**
-\`\`\`bash
+```bash
 git clone <repository-url>
 cd SE-Porfiria
-\`\`\`
+```
 
 2. **Instalar dependencias**
-\`\`\`bash
+```bash
 npm install
-cd drools-server && npm install
-cd ..
-\`\`\`
+```
 
 3. **Configurar base de datos**
-\`\`\`bash
+```bash
 # Generar el cliente de Prisma
 npx prisma generate
 
 # Aplicar migraciones y cargar datos iniciales
 npx prisma migrate reset --force
-\`\`\`
+```
 
-4. **Iniciar los servidores**
-\`\`\`bash
-# Iniciar ambos servidores (Next.js y Drools)
-npm run dev:full
-
-# O iniciarlos por separado:
-npm run dev          # Servidor Next.js
-npm run drools:dev   # Servidor Drools
-\`\`\`
+4. **Iniciar la aplicación**
+```bash
+npm run dev
+```
 
 5. **Acceder a la aplicación**
-\`\`\`
+```
 Frontend: http://localhost:3000
-Servidor Drools: http://localhost:3001
-\`\`\`
+```
 
 6. **Credenciales por defecto**
-\`\`\`
+```
 Email: doctor@example.com
 Contraseña: demo123
-\`\`\`
+```
 
 ## 📊 Estructura del Proyecto
 
-\`\`\`
+```
 SE-Porfiria/
 ├── app/                    # App Router de Next.js
 │   ├── api/               # API Routes
@@ -102,13 +96,14 @@ SE-Porfiria/
 │   ├── questionnaire/     # Sistema de cuestionarios
 │   ├── cipyp/            # Dashboard CIPYP
 │   └── globals.css       # Estilos globales
-├── drools-server/         # Servidor de reglas Drools
-│   ├── rules/            # Archivos .drl
-│   └── server.js         # Servidor Express
 ├── lib/                  # Utilidades y configuración
+│   ├── drools-engine.ts # Motor de reglas principal
+│   ├── drools-client.ts  # Cliente para comunicación
+│   ├── rules/            # Definición de reglas médicas
+│   └── data/             # Base de datos de medicamentos
 ├── prisma/               # Esquema de base de datos
 └── public/               # Archivos estáticos
-\`\`\`
+```
 
 ## 🗄️ Esquema de Base de Datos
 
@@ -142,6 +137,16 @@ SE-Porfiria/
 - Roles diferenciados (MEDICO, CIPYP, ADMIN)
 - Acceso restringido por rol
 - Protección de rutas API
+
+## 💊 Base de Datos de Medicamentos
+
+El sistema incluye una base de datos completa de medicamentos basada en la información oficial de la Porphyria Foundation, con niveles de seguridad:
+
+- **OK!** - Muy Seguro (verde)
+- **OK?** - Probablemente Seguro (amarillo)
+- **BAD?** - Probablemente Inseguro (naranja)
+- **BAD!** - Muy Inseguro (rojo)
+- **NO INFO** - Sin Información (gris)
 
 ## 🏥 Uso Médico
 

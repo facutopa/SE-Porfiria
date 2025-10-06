@@ -9,7 +9,6 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "dev:full": "concurrently \"npm run dev\"",
     "db:seed": "prisma db seed"
   },
   "prisma": {
