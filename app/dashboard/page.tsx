@@ -19,7 +19,13 @@ export default function DashboardPage() {
     totalPatients: 0,
     questionnairesCompleted: 0
   })
-  const [recentPatients, setRecentPatients] = useState([])
+  const [recentPatients, setRecentPatients] = useState<Array<{
+    id: string;
+    name: string;
+    dni: string;
+    lastVisit: string;
+    status: string;
+  }>>([])
   const [loading, setLoading] = useState(true)
   const [kieStatus, setKieStatus] = useState<{ ok: boolean, message: string } | null>(null)
 
