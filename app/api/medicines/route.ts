@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import medicinesData from '../../../lib/data/medicines-database.json'
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
+
 // Base de datos de medicamentos basada en la Porphyria Foundation
 const medicinesDatabase = medicinesData.medicines
 
