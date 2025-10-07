@@ -226,7 +226,7 @@ export default function CIPYPDashboardPage() {
                 </Link>
               </div>
               <div className="space-y-4">
-                {mockRecentActivity.map((activity) => (
+                {mockRecentActivity.map((activity: any) => (
                   <div key={activity.id} className="flex items-center p-4 bg-gray-50 rounded-lg">
                     <div className="flex-shrink-0 mr-4">
                       {getStatusIcon(activity.status)}
@@ -258,7 +258,7 @@ export default function CIPYPDashboardPage() {
             <div className="card">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Médicos Activos</h2>
               <div className="space-y-4">
-                {mockDoctors.map((doctor) => (
+                {mockDoctors.map((doctor: any) => (
                   <div key={doctor.id} className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium text-gray-900">{doctor.name}</h3>

@@ -229,7 +229,7 @@ export default function EditQuestionnairePage() {
                 <div className="mt-6 bg-white p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">Estudios Recomendados:</h4>
                   <ul className="list-disc pl-5 text-gray-700">
-                    {recommendation.estudiosRecomendados.map((estudio, index) => (
+                    {recommendation.estudiosRecomendados.map((estudio: string, index: number) => (
                       <li key={index}>{estudio}</li>
                     ))}
                   </ul>
@@ -240,7 +240,7 @@ export default function EditQuestionnairePage() {
                 <div className="mt-4 bg-white p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">Medicamentos Contraindicados:</h4>
                   <ul className="list-disc pl-5 text-gray-700">
-                    {recommendation.medicamentosContraproducentes.map((medicamento, index) => (
+                    {recommendation.medicamentosContraproducentes.map((medicamento: string, index: number) => (
                       <li key={index}>{medicamento}</li>
                     ))}
                   </ul>

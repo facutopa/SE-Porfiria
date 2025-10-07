@@ -212,7 +212,7 @@ export default function MedicinesPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Todas las clases</option>
-                {uniqueClasses.map(cls => (
+                {uniqueClasses.map((cls: string) => (
                   <option key={cls} value={cls}>{cls}</option>
                 ))}
               </select>
@@ -229,7 +229,7 @@ export default function MedicinesPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Todos los niveles</option>
-                {uniqueConclusions.map(conclusion => (
+                {uniqueConclusions.map((conclusion: string) => (
                   <option key={conclusion} value={conclusion}>
                     {getConclusionText(conclusion)}
                   </option>
@@ -326,7 +326,7 @@ export default function MedicinesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMedicines.map((medicine, index) => (
+                {filteredMedicines.map((medicine: any, index: number) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>

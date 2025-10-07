@@ -233,7 +233,7 @@ export default function PatientsPage() {
                       <div className="flex items-center">
                         <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
                           <span className="text-sm font-medium text-primary-700">
-                            {patient.name.split(' ').map(n => n[0]).join('')}
+                            {patient.name.split(' ').map((n: string) => n[0]).join('')}
                           </span>
                         </div>
                         <div className="ml-4">
