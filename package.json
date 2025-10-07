@@ -24,7 +24,6 @@
     "clsx": "^2.0.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "java": "^0.16.2",
     "jsonwebtoken": "^9.0.0",
     "lucide-react": "^0.290.0",
     "next": "^14.0.0",
