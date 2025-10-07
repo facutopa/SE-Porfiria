@@ -228,7 +228,6 @@ export async function PUT(
           medicamentosContraproducentes: JSON.stringify(droolsResult.recommendation?.medicamentosContraproducentes || []),
           confidence: droolsResult.recommendation?.confidence || null,
           score: droolsResult.recommendation?.score || null,
-          tipoPorfiria: droolsResult.recommendation?.tipoPorfiria || null,
           updatedAt: new Date()
         }
       });
