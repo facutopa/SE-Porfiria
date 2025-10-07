@@ -356,7 +356,7 @@ export default function NewQuestionnairePage() {
 
       const responses = Object.entries(answers).map(([questionId, answer]) => ({
         questionId,
-        answer,
+        answer: answer as string,
         patientId: selectedPatient.id,
         timestamp: new Date()
       }));

@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
     const responses = Object.entries(answers).map(([questionId, answer]) => ({
       questionId,
-      answer,
+      answer: answer as string,
       patientId: patient.id,
       timestamp: new Date()
     }));
@@ -177,18 +177,20 @@ export async function POST(request: Request) {
     console.error('Error al crear cuestionario:', error);
     
     // Manejar errores específicos
-    if (error.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'Ya existe un cuestionario para este paciente' },
-        { status: 400 }
-      );
-    }
-    
-    if (error.code === 'P2003') {
-      return NextResponse.json(
-        { error: 'Error de referencia: El paciente o doctor no existe.' },
-        { status: 400 }
-      );
+    if (error && typeof error === 'object' && 'code' in error) {
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'Ya existe un cuestionario para este paciente' },
+          { status: 400 }
+        );
+      }
+      
+      if (error.code === 'P2003') {
+        return NextResponse.json(
+          { error: 'Error de referencia: El paciente o doctor no existe.' },
+          { status: 400 }
+        );
+      }
     }
     
     return NextResponse.json(
