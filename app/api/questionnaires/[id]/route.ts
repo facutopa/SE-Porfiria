@@ -180,7 +180,7 @@ export async function PUT(
 
     const responses = Object.entries(answers).map(([questionId, answer]) => ({
       questionId,
-      answer,
+      answer: answer as string,
       patientId: existingQuestionnaire.patient.id,
       timestamp: new Date()
     }));
