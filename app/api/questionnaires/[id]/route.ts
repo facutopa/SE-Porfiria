@@ -4,6 +4,9 @@ import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { evaluateWithDrools } from '@/lib/drools-client';
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
+
 const prisma = new PrismaClient();
 
 export async function GET(

@@ -4,6 +4,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
+
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
