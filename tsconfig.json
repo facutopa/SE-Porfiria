@@ -3,7 +3,7 @@
     "target": "es2018",
     "lib": ["dom", "dom.iterable", "es2018"],
     "allowJs": true,
-    "types": ["minimatch", "node"],
+    "types": ["node"],
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
