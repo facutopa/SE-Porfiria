@@ -295,7 +295,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'colorOrina',
     category: SYMPTOM_CATEGORIES.ANAMNESIS,
-    text: '¿Color de orina oscura/ámbar?',
+    text: '¿Color de orina oscura?',
     type: 'YES_NO',
     required: true,
     weight: 5,
