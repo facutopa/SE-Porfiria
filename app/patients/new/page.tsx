@@ -117,7 +117,7 @@ export default function NewPatientPage() {
                 <h1 className="text-xl font-bold text-gray-900">Nuevo Paciente</h1>
               </div>
             </div>
-            <Link href="/patients" className="btn-secondary">
+            <Link href="/patients" className="btn-secondary flex items-center">
               <ArrowLeftIcon className="h-5 w-5 mr-2" />
               Volver
             </Link>
@@ -420,13 +420,13 @@ export default function NewPatientPage() {
 
             {/* Botones */}
             <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-              <Link href="/patients" className="btn-secondary">
+              <Link href="/patients" className="btn-secondary flex items-center">
                 Cancelar
               </Link>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
                 {isLoading ? 'Creando paciente...' : 'Crear Paciente'}
               </button>

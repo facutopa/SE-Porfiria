@@ -194,7 +194,7 @@ export default function ViewQuestionnairePage() {
             <div className="flex space-x-3">
               <Link 
                 href={`/questionnaire/edit/${params.id}`}
-                className="btn-secondary"
+                className="btn-secondary flex items-center"
               >
                 <PencilIcon className="h-5 w-5 mr-2" />
                 Editar
@@ -202,7 +202,7 @@ export default function ViewQuestionnairePage() {
               <button
                 onClick={handleDeleteQuestionnaire}
                 disabled={isDeleting}
-                className="btn-danger"
+                className="btn-danger flex items-center"
               >
                 {isDeleting ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
@@ -211,7 +211,7 @@ export default function ViewQuestionnairePage() {
                 )}
                 {isDeleting ? 'Eliminando...' : 'Eliminar'}
               </button>
-              <Link href="/patients" className="btn-secondary">
+              <Link href="/patients" className="btn-secondary flex items-center">
                 <ArrowLeftIcon className="h-5 w-5 mr-2" />
                 Volver
               </Link>
@@ -494,7 +494,7 @@ export default function ViewQuestionnairePage() {
               type="button"
               onClick={previousQuestion}
               disabled={isFirstQuestion}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
               <ArrowLeftIcon className="h-5 w-5 mr-2" />
               Anterior
@@ -504,7 +504,7 @@ export default function ViewQuestionnairePage() {
               <div className="flex space-x-3">
                 <Link 
                   href={`/questionnaire/edit/${params.id}`}
-                  className="btn-primary"
+                  className="btn-primary flex items-center"
                 >
                   <PencilIcon className="h-5 w-5 mr-2" />
                   Editar Cuestionario
@@ -512,7 +512,7 @@ export default function ViewQuestionnairePage() {
                 <button
                   onClick={handleDeleteQuestionnaire}
                   disabled={isDeleting}
-                  className="btn-danger"
+                  className="btn-danger flex items-center"
                 >
                   {isDeleting ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
@@ -521,7 +521,7 @@ export default function ViewQuestionnairePage() {
                   )}
                   {isDeleting ? 'Eliminando...' : 'Eliminar Cuestionario'}
                 </button>
-                <Link href="/patients" className="btn-secondary">
+                <Link href="/patients" className="btn-secondary flex items-center">
                   <ArrowLeftIcon className="h-5 w-5 mr-2" />
                   Volver a Pacientes
                 </Link>
@@ -530,7 +530,7 @@ export default function ViewQuestionnairePage() {
               <button
                 type="button"
                 onClick={nextQuestion}
-                className="btn-primary"
+                className="btn-primary flex items-center"
               >
                 Siguiente
                 <ArrowRightIcon className="h-5 w-5 ml-2" />
