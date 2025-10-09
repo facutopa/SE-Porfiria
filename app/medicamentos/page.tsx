@@ -23,6 +23,8 @@ export default function MedicinesPage() {
   const [uniqueClasses, setUniqueClasses] = useState<string[]>([])
   const [uniqueConclusions, setUniqueConclusions] = useState<string[]>([])
   const [totalInDatabase, setTotalInDatabase] = useState<number>(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [medicinesPerPage] = useState(50)
 
   // Cargar todos los medicamentos una sola vez al inicio
   const loadAllMedicines = async () => {
@@ -77,8 +79,22 @@ export default function MedicinesPage() {
       filtered = filtered.filter(medicine => medicine.conclusion === filterConclusion)
     }
 
+    // Ordenar alfabéticamente por genericName
+    filtered.sort((a, b) => a.genericName.localeCompare(b.genericName))
+
     return filtered
   }, [allMedicines, searchTerm, filterClass, filterConclusion])
+
+  // Paginación
+  const totalPages = Math.ceil(filteredMedicines.length / medicinesPerPage)
+  const startIndex = (currentPage - 1) * medicinesPerPage
+  const endIndex = startIndex + medicinesPerPage
+  const paginatedMedicines = filteredMedicines.slice(startIndex, endIndex)
+
+  // Resetear página cuando cambien los filtros
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, filterClass, filterConclusion])
 
   const getConclusionIcon = (conclusion: string) => {
     switch (conclusion) {
@@ -129,6 +145,12 @@ export default function MedicinesPage() {
       default:
         return 'Sin Información'
     }
+  }
+
+  // Función para capitalizar texto (primera letra mayúscula, resto minúscula)
+  const capitalizeText = (text: string) => {
+    if (!text || text === 'n/a') return text
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
   }
 
   if (loading) {
@@ -213,7 +235,7 @@ export default function MedicinesPage() {
               >
                 <option value="">Todas las clases</option>
                 {uniqueClasses.map((cls: string) => (
-                  <option key={cls} value={cls}>{cls}</option>
+                  <option key={cls} value={cls}>{capitalizeText(cls)}</option>
                 ))}
               </select>
             </div>
@@ -229,11 +251,13 @@ export default function MedicinesPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Todos los niveles</option>
-                {uniqueConclusions.map((conclusion: string) => (
-                  <option key={conclusion} value={conclusion}>
-                    {getConclusionText(conclusion)}
-                  </option>
-                ))}
+                {uniqueConclusions
+                  .sort((a, b) => getConclusionText(a).localeCompare(getConclusionText(b)))
+                  .map((conclusion: string) => (
+                    <option key={conclusion} value={conclusion}>
+                      {getConclusionText(conclusion)}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
@@ -272,26 +296,41 @@ export default function MedicinesPage() {
         {/* Leyenda */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="text-sm font-medium text-blue-900 mb-2">Leyenda de Seguridad</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
             <div className="flex items-center">
-              <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
-              <span className="text-green-700">OK! - Muy Seguro</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" className="h-5 w-5 text-green-600 mr-2">
+                <title>Muy Seguro</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+              </svg>
+              <span className="text-green-700 font-medium">Muy Seguro</span>
             </div>
             <div className="flex items-center">
-              <QuestionMarkCircleIcon className="h-4 w-4 text-yellow-600 mr-2" />
-              <span className="text-yellow-700">OK? - Probablemente Seguro</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" className="h-5 w-5 text-yellow-600 mr-2">
+                <title>Probablemente Seguro</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"></path>
+              </svg>
+              <span className="text-yellow-700 font-medium">Probablemente Seguro</span>
             </div>
             <div className="flex items-center">
-              <ExclamationTriangleIcon className="h-4 w-4 text-orange-600 mr-2" />
-              <span className="text-orange-700">BAD? - Probablemente Inseguro</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" className="h-5 w-5 text-orange-600 mr-2">
+                <title>Probablemente Inseguro</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"></path>
+              </svg>
+              <span className="text-orange-700 font-medium">Probablemente Inseguro</span>
             </div>
             <div className="flex items-center">
-              <XCircleIcon className="h-4 w-4 text-red-600 mr-2" />
-              <span className="text-red-700">BAD! - Muy Inseguro</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" className="h-5 w-5 text-red-600 mr-2">
+                <title>Muy Inseguro</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+              </svg>
+              <span className="text-red-700 font-medium">Muy Inseguro</span>
             </div>
             <div className="flex items-center">
-              <QuestionMarkCircleIcon className="h-4 w-4 text-gray-600 mr-2" />
-              <span className="text-gray-700">NO INFO - Sin Información</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon" className="h-5 w-5 text-gray-600 mr-2">
+                <title>Sin Información</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"></path>
+              </svg>
+              <span className="text-gray-700 font-medium">Sin Información</span>
             </div>
           </div>
         </div>
@@ -302,6 +341,11 @@ export default function MedicinesPage() {
             <h3 className="text-lg font-medium text-gray-900">
               Resultados ({filteredMedicines.length} medicamentos encontrados)
             </h3>
+            {filteredMedicines.length > 0 && (
+              <p className="text-sm text-gray-600 mt-1">
+                Mostrando {startIndex + 1}-{Math.min(endIndex, filteredMedicines.length)} de {filteredMedicines.length} medicamentos
+              </p>
+            )}
           </div>
           
           <div className="overflow-x-auto">
@@ -320,18 +364,15 @@ export default function MedicinesPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Seguridad
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Referencias
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMedicines.map((medicine: any, index: number) => (
+                {paginatedMedicines.map((medicine: any, index: number) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {medicine.genericName}
+                          {capitalizeText(medicine.genericName)}
                         </div>
                         <div className="text-sm text-gray-500">
                           {medicine.brandName}
@@ -339,10 +380,10 @@ export default function MedicinesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {medicine.class}
+                      {capitalizeText(medicine.class)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {medicine.type}
+                      {capitalizeText(medicine.type)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center">
@@ -352,16 +393,94 @@ export default function MedicinesPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
-                      <div className="truncate" title={medicine.references}>
-                        {medicine.references || 'Sin referencias'}
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          
+          {/* Controles de Paginación */}
+          {totalPages > 1 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Página <span className="font-medium">{currentPage}</span> de{' '}
+                    <span className="font-medium">{totalPages}</span>
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Anterior</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    {/* Números de página */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === pageNum
+                              ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Siguiente</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {filteredMedicines.length === 0 && (

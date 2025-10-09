@@ -79,16 +79,14 @@ export default function HomePage() {
                   <li>• Registro y gestión de pacientes</li>
                   <li>• Cuestionario especializado de evaluación</li>
                   <li>• Recomendaciones de tests basadas en evidencia</li>
-                  <li>• Historial completo de consultas</li>
                 </ul>
               </div>
               <div>
                 <h4 className="text-lg font-semibold text-gray-900 mb-3">Para CIPYP</h4>
                 <ul className="space-y-2 text-gray-600">
                   <li>• Acceso a todos los casos registrados</li>
-                  <li>• Análisis estadístico de datos</li>
+                  <li>• Administración de pacientes</li>
                   <li>• Seguimiento de recomendaciones de tests</li>
-                  <li>• Reportes y exportación de datos</li>
                 </ul>
               </div>
             </div>
