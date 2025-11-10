@@ -1,0 +1,3 @@
+[submodule "kie-server"]
+	path = kie-server
+	url = https://github.com/facutopa/kie-server
